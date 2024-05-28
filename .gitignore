@@ -1,0 +1,23 @@
+# Python
+__pycache__
+.pytest_cache
+
+# Virtual environments
+*env
+*venv
+
+# IDEs
+.vscode
+pyrightconfig.json
+.idea
+
+# Pants workspace files
+/.pants.*
+/dist/
+/.pids
+
+cbs/**/partner_inventory.json
+cbs/**/remote_config.json
+
+# pycov files
+.coverage

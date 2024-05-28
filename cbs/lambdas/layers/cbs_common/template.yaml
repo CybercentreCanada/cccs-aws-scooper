@@ -1,0 +1,20 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Resources:
+  CBSCommonLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      ContentUri: cbs_common
+      CompatibleRuntimes:
+        - python3.9
+        - python3.10
+        - python3.11
+    Metadata:
+      BuildMethod: python3.10
+  CBSCommonLayerPolicy:
+    Type: AWS::Lambda::LayerVersionPermission
+    Properties:
+      Action: lambda:GetLayerVersion
+      LayerVersionArn: !Ref CBSCommonLayer
+      Principal: '*'

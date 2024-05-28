@@ -1,0 +1,20 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "Allow access through S3 for all principals in the Log Archive account that are authorized to use the key via S3",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "*"
+      },
+      "Action": "kms:Decrypt",
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "kms:ViaService": "s3.ca-central-1.amazonaws.com",
+          "kms:CallerAccount": "$log_archive_account_id"
+        }
+      }
+    }
+  ]
+}

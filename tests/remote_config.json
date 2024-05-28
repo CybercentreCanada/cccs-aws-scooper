@@ -1,0 +1,4 @@
+{
+  "bucket_name": "test",
+  "cccs_role_arn": "arn:aws:iam::111111111111:role/CBS-CCCSReaderRole-test-ca-central-1"
+}

@@ -1,0 +1,42 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": [
+        "s3:InitiateReplication"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        "arn:aws:s3:::$source_bucket_name/*"
+      ]
+    },
+    {
+      "Action": [
+        "s3:GetReplicationConfiguration",
+        "s3:PutInventoryConfiguration"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        "arn:aws:s3:::$source_bucket_name"
+      ]
+    },
+    {
+      "Action": [
+        "s3:GetObject"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        "arn:aws:s3:::$source_bucket_name/*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::$source_bucket_name/*"
+      ]
+    }
+  ]
+}

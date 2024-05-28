@@ -1,0 +1,39 @@
+name: Build CBS Validator
+on:
+  push:
+    branches:
+      - staging
+      - production
+    paths:
+      - cbs/validator/**
+
+jobs:
+  Build-CBS-Validator:
+    runs-on:
+      group: CBS
+      labels: [cbs, prd]
+    environment: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get temporary credentials
+        uses: ./.github/actions/iamra
+        with:
+          profile-arn: ${{ vars.IAMRA_PROFILE_ARN }}
+          role-arn: ${{ vars.DEVOPS_ROLE_ARN }}
+          trust-anchor-arn: ${{ vars.IAMRA_TRUST_ANCHOR_ARN }}
+          certificate: ${{ secrets.IAMRA_CERT }}
+          private-key: ${{ secrets.IAMRA_KEY }}
+      - name: Set up Python 3.9.16
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9.16"
+      - name: Build Replication Rule Validator
+        run: |
+          echo '{"bucket_name": "${{ vars.PARTNER_CONFIG_BUCKET_NAME }}"}' > cbs/validator/remote_config.json
+          pants package cbs/validator:cbs_validator
+      - name: Upload artifact to S3
+        run: |
+          pants run .github/scripts:upload_artifact -- \
+            --artifact=dist/cbs_validator \
+            --bucket=${{ vars.ARTIFACT_BUCKET_NAME }} \
+            --key=cbs_validator

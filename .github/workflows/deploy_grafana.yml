@@ -1,0 +1,41 @@
+name: Deploy Grafana Dashboard
+on:
+  push:
+    branches:
+      - staging
+      - production
+    paths:
+      - .cicd/grafana/**
+
+jobs:
+  Deploy-Grafana-Dashboard:
+    runs-on:
+      group: CBS
+      labels: [cbs, prd]
+    environment: ${{ github.ref_name }}
+    env:
+      TF_VAR_grafana_auth: '{ url = "${{ vars.GRAFANA_URL }}", api_key = "${{ secrets.GRAFANA_API_KEY }}" }'
+      TF_VAR_cloudwatch_auth: '{ access_key = "${{ secrets.CLOUDWATCH_ACCESS_KEY }}", secret_key = "${{ secrets.CLOUDWATCH_SECRET_KEY }}" }'
+      TF_VAR_deployment: '{ account_id = "${{ vars.AGENT_ACCOUNT_ID }}", branch = "${{ github.ref_name }}" }'
+      TF_VAR_git_commit_url: ${{ github.event.head_commit.url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get temporary credentials
+        uses: ./.github/actions/iamra
+        with:
+          profile-arn: ${{ vars.IAMRA_PROFILE_ARN }}
+          role-arn: ${{ vars.DEVOPS_ROLE_ARN }}
+          trust-anchor-arn: ${{ vars.IAMRA_TRUST_ANCHOR_ARN }}
+          certificate: ${{ secrets.IAMRA_CERT }}
+          private-key: ${{ secrets.IAMRA_KEY }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: hashicorp/setup-terraform@v3
+      - name: Deploy Grafana Dashboard
+        run: |
+          python3 .github/scripts/generate_tf_config.py backend \
+            --bucket=${{ vars.TERRAFORM_STATE_BUCKET_NAME }} \
+            --key=grafana
+          terraform -chdir=.cicd/grafana init -backend-config=grafana.s3.tfbackend.json
+          terraform -chdir=.cicd/grafana apply -auto-approve

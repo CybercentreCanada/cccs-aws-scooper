@@ -1,0 +1,5 @@
+[tool.ruff]
+ignore = [
+  "E402", # Module level import not at top of file violations
+  "E501", # Line length violations
+]

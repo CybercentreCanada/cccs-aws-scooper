@@ -1,0 +1,22 @@
+# Environment
+Environment: dev
+AgentAccount:
+OnlyAgent: true
+UsePAT: false
+
+# Variables
+PartnerConfigBucket:  # 2.0 partners
+PartnerInventoryBucket:  # 1.0 partners
+SQSArn:
+OpsGenieURL:
+UnknownWorkloadsEmails: []
+
+# IAM
+UseRole: true
+ImportUsersOrRoles: false
+DevOpsUser: CBS-DevOpsUser-dev-ca-central-1
+DevOpsGroup: CBS-DevOpsGroup-dev-ca-central-1
+ReaderUser: CBS-ReaderUser-dev-ca-central-1
+ReaderUserGroup: CBS-ReaderGroup-dev-ca-central-1
+GrafanaUser: CBS-GrafanaUser-dev-ca-central-1
+GrafanaUserGroup: CBS-GrafanaGroup-dev-ca-central-1

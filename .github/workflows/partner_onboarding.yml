@@ -1,0 +1,87 @@
+name: Partner Pipeline
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Action
+        type: choice
+        options:
+          - Write
+          - Read
+      cbs_id:
+        description: CBS ID
+        type: string
+      mgmt_account_id:
+        description: Management Account ID
+        type: string
+      log_archive_account_id:
+        description: Log Archive Account ID
+        type: string
+      accelerator:
+        description: Accelerator
+        type: choice
+        options:
+          - ASEA
+          - LZA
+          - None
+      disclosure_expiry:
+        description: Disclosure Expiry (UTC timestamp in the form of yyyy-mm-ddThh:mm:ss)
+        type: string
+
+jobs:
+  Partner-Onboarding:
+    if: inputs.action == 'Write'
+    runs-on:
+      group: CBS
+      labels: [cbs, prd]
+    environment: ${{ github.ref_name }}
+    steps:
+      - name: Get temporary credentials
+        uses: ./.github/actions/iamra
+        with:
+          profile-arn: ${{ vars.IAMRA_PROFILE_ARN }}
+          role-arn: ${{ vars.DEVOPS_ROLE_ARN }}
+          trust-anchor-arn: ${{ vars.IAMRA_TRUST_ANCHOR_ARN }}
+          certificate: ${{ secrets.IAMRA_CERT }}
+          private-key: ${{ secrets.IAMRA_KEY }}
+      - name: Add '${{ inputs.cbs_id }}' to partner database
+        if: inputs.cbs_id != '' && inputs.mgmt_account_id != '' && inputs.log_archive_account_id != ''
+        run: |
+          pants run .github/scripts:modify_dynamodb -- \
+            --action=${{ inputs.action }} \
+            --environment=${{ github.ref_name }} \
+            --table_name=${{ vars.PARTNER_INVENTORY_TABLE_NAME }} \
+            --cbs_id=${{ inputs.cbs_id }} \
+            --mgmt_account_id=${{ inputs.mgmt_account_id }} \
+            --account_id=${{ inputs.log_archive_account_id }} \
+            --accelerator=${{ inputs.accelerator }} \
+            --disclosure_expiry=${{ inputs.disclosure_expiry }}
+
+  Read-Partner-Database:
+    needs: Partner-Onboarding
+    if: |
+      always() &&
+      (needs.Partner-Onboarding.result == 'success' || needs.Partner-Onboarding.result == 'skipped')
+    runs-on:
+      group: CBS
+      labels: [cbs, prd]
+    environment: ${{ github.ref_name }}
+    steps:
+      - name: Get temporary credentials
+        uses: ./.github/actions/iamra
+        with:
+          profile-arn: ${{ vars.IAMRA_PROFILE_ARN }}
+          role-arn: ${{ vars.DEVOPS_ROLE_ARN }}
+          trust-anchor-arn: ${{ vars.IAMRA_TRUST_ANCHOR_ARN }}
+          certificate: ${{ secrets.IAMRA_CERT }}
+          private-key: ${{ secrets.IAMRA_KEY }}
+      - name: Read partner database
+        run: |
+          pants run .github/scripts:modify_dynamodb -- \
+            --action=Read \
+            --table_name=${{ vars.PARTNER_INVENTORY_TABLE_NAME }}
+      - name: Upload partner database artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Partner Table
+          path: partner_table.json

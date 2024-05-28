@@ -1,0 +1,15 @@
+name: Linting
+on: [pull_request]
+
+jobs:
+  Linting:
+    runs-on:
+      group: CBS
+      labels: [cbs, prd]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Linting
+        run: |
+          touch cbs/installer/remote_config.json
+          touch cbs/validator/remote_config.json
+          pants lint ::

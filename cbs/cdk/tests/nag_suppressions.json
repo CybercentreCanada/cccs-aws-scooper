@@ -1,0 +1,7 @@
+{
+  "AwsSolutions-IAM4": "Service roles using managed policies is acceptable",
+  "AwsSolutions-IAM5": "Default roles using managed policies is acceptable",
+  "AwsSolutions-L1": "Python 3.11 is the newest Lambda runtime. Nag just doesn't know it yet",
+  "AwsSolutions-S1": "S3 Bucket server access logs are already collected by the ASEA/LZA",
+  "AwsSolutions-S10": "S3 Buckets in staging not enforcing requests to use SSL is acceptable"
+}

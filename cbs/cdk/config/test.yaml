@@ -1,0 +1,22 @@
+# Environment
+Environment: test
+AgentAccount: '111111111111'
+OnlyAgent: true
+UsePAT: false
+
+# Variables
+PartnerConfigBucket: test # 2.0 partners
+PartnerInventoryBucket: test # 1.0 partners
+SQSArn: arn:aws:sqs:ca-central-1:111111111111:CbsSQS
+OpsGenieURL: https://test.com
+UnknownWorkloadsEmails: [test@test.com]
+
+# IAM
+UseRole: true
+ImportUsersOrRoles: false
+DevOpsUser: CBS-DevOpsUser-test-ca-central-1
+DevOpsGroup: CBS-DevOpsGroup-test-ca-central-1
+ReaderUser: CBS-ReaderUser-test-ca-central-1
+ReaderUserGroup: CBS-ReaderGroup-test-ca-central-1
+GrafanaUser: CBS-GrafanaUser-test-ca-central-1
+GrafanaUserGroup: CBS-GrafanaGroup-test-ca-central-1

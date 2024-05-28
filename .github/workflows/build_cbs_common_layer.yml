@@ -1,0 +1,35 @@
+name: Deploy CBS Common Lambda Layer
+on:
+  push:
+    branches:
+      - staging
+      - production
+
+jobs:
+  Deploy-CBS-Common-Lambda-Layer:
+    runs-on:
+      group: CBS
+      labels: [cbs, prd]
+    environment: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get temporary credentials
+        uses: ./.github/actions/iamra
+        with:
+          profile-arn: ${{ vars.IAMRA_PROFILE_ARN }}
+          role-arn: ${{ vars.DEVOPS_ROLE_ARN }}
+          trust-anchor-arn: ${{ vars.IAMRA_TRUST_ANCHOR_ARN }}
+          certificate: ${{ secrets.IAMRA_CERT }}
+          private-key: ${{ secrets.IAMRA_KEY }}
+      - name: Setup SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+      - name: Deploy cbs-common
+        run: |
+          cd cbs/lambdas/layers/cbs_common/
+          pip download --index-url="https://bagofholding-pb.cse-cst.gc.ca/repository/pypi-cccs/simple" cbs-common
+          python3 -m wheel unpack cbs_common* --dest cbs-common
+          mkdir cbs_common/python/ -p
+          mv cbs-common/cbs_common*/cbs_common cbs_common/python/
+        # sam deploy --stack-name cbs-common --resolve-s3 --no-fail-on-empty-changeset

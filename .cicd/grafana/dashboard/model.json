@@ -1,0 +1,2102 @@
+{
+  "title": "Overview",
+  "editable": true,
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "allValue": "",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "CloudWatch",
+        "definition": "",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Partners",
+        "multi": true,
+        "name": "CBS_ID",
+        "options": [],
+        "query": {
+          "dimensionKey": "CbsId",
+          "metricName": "CloudTrailWorkloadCount",
+          "namespace": "CBS",
+          "queryType": "dimensionValues",
+          "refId": "CloudWatchVariableQueryEditor-VariableQuery",
+          "region": "default"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "datasource": "CloudWatch Alarms",
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true,
+            "inspect": false,
+            "minWidth": 50
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 23,
+      "options": {
+        "cellHeight": "md",
+        "footer": {
+          "countRows": false,
+          "enablePagination": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "StateUpdatedTimestamp"
+          }
+        ]
+      },
+      "targets": [
+        {
+          "alarmNamePrefix": "",
+          "datasource": "CloudWatch Alarms",
+          "includeAlarm": true,
+          "includeInsufficientData": false,
+          "includeOk": false,
+          "includeTypeComposite": true,
+          "includeTypeMetric": true,
+          "refId": "A",
+          "region": "ca-central-1"
+        }
+      ],
+      "title": "Active CloudWatch Alarms",
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "id": 8,
+      "panels": [],
+      "title": "Summary",
+      "type": "row"
+    },
+    {
+      "datasource": "CloudWatch",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 9
+      },
+      "id": 1,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": false,
+            "displayName": "CbsId\\Workload"
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": "CloudWatch",
+          "dimensions": {},
+          "expression": "fields CbsSensorId as CbsId\n| filter strcontains(\"$CBS_ID\", CbsId)\n| stats count() by CbsId, Workload\n| sort by Workload",
+          "id": "",
+          "label": "",
+          "logGroups": [
+            {
+              "accountId": "${account_id}",
+              "arn": "arn:aws:logs:ca-central-1:${account_id}:log-group:/aws/lambda/CBS-TransportLambda-${env}-ca-central-1:*",
+              "name": "/aws/lambda/CBS-TransportLambda-${env}-ca-central-1"
+            }
+          ],
+          "matchExact": true,
+          "metricEditorMode": 0,
+          "metricName": "",
+          "metricQueryType": 0,
+          "namespace": "",
+          "period": "",
+          "queryMode": "Logs",
+          "refId": "A",
+          "region": "default",
+          "sqlExpression": "",
+          "statistic": "Average",
+          "statsGroups": [
+            "CbsId",
+            "Workload"
+          ]
+        }
+      ],
+      "title": "Workload Counts by Partner (2.x)",
+      "transformations": [
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "columnField": "Workload",
+            "emptyValue": "null",
+            "rowField": "CbsId",
+            "valueField": "count()"
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {}
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": "CloudWatch",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 17
+      },
+      "id": 2,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": false,
+            "displayName": "CbsId\\Workload"
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": "CloudWatch",
+          "dimensions": {},
+          "expression": "filter level = 'INFO'\n|filter strcontains(\"$CBS_ID\", CbsId)\n| stats count() by CbsId, Workload\n| sort by Workload",
+          "id": "",
+          "label": "",
+          "logGroups": [
+            {
+              "accountId": "${account_id}",
+              "arn": "arn:aws:logs:ca-central-1:${account_id}:log-group:/aws/lambda/CBS-SQSRouterLambda-${env}-ca-central-1:*",
+              "name": "/aws/lambda/CBS-SQSRouterLambda-${env}-ca-central-1"
+            }
+          ],
+          "matchExact": true,
+          "metricEditorMode": 0,
+          "metricName": "",
+          "metricQueryType": 0,
+          "namespace": "",
+          "period": "",
+          "queryMode": "Logs",
+          "refId": "A",
+          "region": "default",
+          "sqlExpression": "",
+          "statistic": "Average",
+          "statsGroups": [
+            "CbsId",
+            "Workload"
+          ]
+        }
+      ],
+      "title": "Workload Counts by Partner Routed from 1.x",
+      "transformations": [
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "columnField": "Workload",
+            "emptyValue": "null",
+            "rowField": "CbsId",
+            "valueField": "count()"
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {}
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": "CloudWatch",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 4,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 2,
+            "pointSize": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 25
+      },
+      "id": 3,
+      "maxDataPoints": 32,
+      "options": {
+        "legend": {
+          "calcs": [
+            "sum"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Total",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": "CloudWatch",
+          "dimensions": {},
+          "expression": "fields Workload = \"cloudtrailLogs\" as cloudtrail, CbsSensorId as CbsId\n| filter strcontains(\"$CBS_ID\", CbsId)\n| stats sum(cloudtrail) as CloudTrailLogs by bin($__interval), CbsId",
+          "id": "",
+          "label": "",
+          "logGroups": [
+            {
+              "accountId": "${account_id}",
+              "arn": "arn:aws:logs:ca-central-1:${account_id}:log-group:/aws/lambda/CBS-TransportLambda-${env}-ca-central-1:*",
+              "name": "/aws/lambda/CBS-TransportLambda-${env}-ca-central-1"
+            }
+          ],
+          "matchExact": true,
+          "metricEditorMode": 0,
+          "metricName": "",
+          "metricQueryType": 0,
+          "namespace": "",
+          "period": "",
+          "queryMode": "Logs",
+          "refId": "A",
+          "region": "default",
+          "sqlExpression": "",
+          "statistic": "Average",
+          "statsGroups": [
+            "bin($__interval)",
+            "CbsId"
+          ]
+        },
+        {
+          "datasource": "CloudWatch",
+          "dimensions": {},
+          "expression": "fields Workload = \"cloudtrailLogs\" as cloudtrail\n| filter strcontains(\"$CBS_ID\", CbsId)\n| stats sum(cloudtrail) as CloudTrailLogs by bin($__interval), CbsId",
+          "hide": false,
+          "id": "",
+          "label": "",
+          "logGroups": [
+            {
+              "accountId": "${account_id}",
+              "arn": "arn:aws:logs:ca-central-1:${account_id}:log-group:/aws/lambda/CBS-SQSRouterLambda-${env}-ca-central-1:*",
+              "name": "/aws/lambda/CBS-SQSRouterLambda-${env}-ca-central-1"
+            }
+          ],
+          "matchExact": true,
+          "metricEditorMode": 0,
+          "metricName": "",
+          "metricQueryType": 0,
+          "namespace": "",
+          "period": "",
+          "queryMode": "Logs",
+          "refId": "B",
+          "region": "default",
+          "sqlExpression": "",
+          "statistic": "Average",
+          "statsGroups": [
+            "bin($__interval)",
+            "CbsId"
+          ]
+        }
+      ],
+      "title": "CloudTrail Logs",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "CloudWatch",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 4,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 2,
+            "pointSize": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 25
+      },
+      "id": 4,
+      "maxDataPoints": 32,
+      "options": {
+        "legend": {
+          "calcs": [
+            "sum"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Total",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": "CloudWatch",
+          "dimensions": {},
+          "expression": "fields strcontains(Workload, \"cloudwatch\") as cloudwatch, CbsSensorId as CbsId\n| filter strcontains(\"$CBS_ID\", CbsId)\n| stats sum(cloudwatch) as CloudWatchLogs by bin($__interval), CbsId",
+          "id": "",
+          "label": "",
+          "logGroups": [
+            {
+              "accountId": "${account_id}",
+              "arn": "arn:aws:logs:ca-central-1:${account_id}:log-group:/aws/lambda/CBS-TransportLambda-${env}-ca-central-1:*",
+              "name": "/aws/lambda/CBS-TransportLambda-${env}-ca-central-1"
+            }
+          ],
+          "matchExact": true,
+          "metricEditorMode": 0,
+          "metricName": "",
+          "metricQueryType": 0,
+          "namespace": "",
+          "period": "",
+          "queryMode": "Logs",
+          "refId": "A",
+          "region": "default",
+          "sqlExpression": "",
+          "statistic": "Average",
+          "statsGroups": [
+            "bin($__interval)",
+            "CbsId"
+          ]
+        },
+        {
+          "datasource": "CloudWatch",
+          "dimensions": {},
+          "expression": "fields strcontains(Workload, \"cloudwatch\") as cloudwatch\n| filter strcontains(\"$CBS_ID\", CbsId)\n| stats sum(cloudwatch) as CloudWatchLogs by bin($__interval), CbsId",
+          "hide": false,
+          "id": "",
+          "label": "",
+          "logGroups": [
+            {
+              "accountId": "${account_id}",
+              "arn": "arn:aws:logs:ca-central-1:${account_id}:log-group:/aws/lambda/CBS-SQSRouterLambda-${env}-ca-central-1:*",
+              "name": "/aws/lambda/CBS-SQSRouterLambda-${env}-ca-central-1"
+            }
+          ],
+          "matchExact": true,
+          "metricEditorMode": 0,
+          "metricName": "",
+          "metricQueryType": 0,
+          "namespace": "",
+          "period": "",
+          "queryMode": "Logs",
+          "refId": "B",
+          "region": "default",
+          "sqlExpression": "",
+          "statistic": "Average",
+          "statsGroups": [
+            "bin($__interval)",
+            "CbsId"
+          ]
+        }
+      ],
+      "title": "CloudWatch Logs",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "CloudWatch",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 4,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 2,
+            "pointSize": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 33
+      },
+      "id": 5,
+      "maxDataPoints": 32,
+      "options": {
+        "legend": {
+          "calcs": [
+            "sum"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Total",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": "CloudWatch",
+          "dimensions": {},
+          "expression": "fields strcontains(Workload, \"vpcFlowLogs\") as vpcflowlogs, CbsSensorId as CbsId\n| filter strcontains(\"$CBS_ID\", CbsId)\n| stats sum(vpcflowlogs) as VPCFlowLogs by bin($__interval), CbsId",
+          "id": "",
+          "label": "",
+          "logGroups": [
+            {
+              "accountId": "${account_id}",
+              "arn": "arn:aws:logs:ca-central-1:${account_id}:log-group:/aws/lambda/CBS-TransportLambda-${env}-ca-central-1:*",
+              "name": "/aws/lambda/CBS-TransportLambda-${env}-ca-central-1"
+            }
+          ],
+          "matchExact": true,
+          "metricEditorMode": 0,
+          "metricName": "",
+          "metricQueryType": 0,
+          "namespace": "",
+          "period": "",
+          "queryMode": "Logs",
+          "refId": "A",
+          "region": "default",
+          "sqlExpression": "",
+          "statistic": "Average",
+          "statsGroups": [
+            "bin($__interval)",
+            "CbsId"
+          ]
+        },
+        {
+          "datasource": "CloudWatch",
+          "dimensions": {},
+          "expression": "fields strcontains(Workload, \"vpcFlowLogs\") as vpcflowlogs\n| filter strcontains(\"$CBS_ID\", CbsId)\n| stats sum(vpcflowlogs) as VPCFlowLogs by bin($__interval), CbsId",
+          "hide": false,
+          "id": "",
+          "label": "",
+          "logGroups": [
+            {
+              "accountId": "${account_id}",
+              "arn": "arn:aws:logs:ca-central-1:${account_id}:log-group:/aws/lambda/CBS-SQSRouterLambda-${env}-ca-central-1:*",
+              "name": "/aws/lambda/CBS-SQSRouterLambda-${env}-ca-central-1"
+            }
+          ],
+          "matchExact": true,
+          "metricEditorMode": 0,
+          "metricName": "",
+          "metricQueryType": 0,
+          "namespace": "",
+          "period": "",
+          "queryMode": "Logs",
+          "refId": "B",
+          "region": "default",
+          "sqlExpression": "",
+          "statistic": "Average",
+          "statsGroups": [
+            "bin($__interval)",
+            "CbsId"
+          ]
+        }
+      ],
+      "title": "VPC Flow Logs",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "CloudWatch",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 4,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 2,
+            "pointSize": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 33
+      },
+      "id": 7,
+      "maxDataPoints": 32,
+      "options": {
+        "legend": {
+          "calcs": [
+            "sum"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Total",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": "CloudWatch",
+          "dimensions": {},
+          "expression": "fields Workload = \"elbLogsV2\" as elblogs, CbsSensorId as CbsId\n| filter strcontains(\"$CBS_ID\", CbsId)\n| stats sum(elblogs) as ELBLogs by bin($__interval), CbsId",
+          "id": "",
+          "label": "",
+          "logGroups": [
+            {
+              "accountId": "${account_id}",
+              "arn": "arn:aws:logs:ca-central-1:${account_id}:log-group:/aws/lambda/CBS-TransportLambda-${env}-ca-central-1:*",
+              "name": "/aws/lambda/CBS-TransportLambda-${env}-ca-central-1"
+            }
+          ],
+          "matchExact": true,
+          "metricEditorMode": 0,
+          "metricName": "",
+          "metricQueryType": 0,
+          "namespace": "",
+          "period": "",
+          "queryMode": "Logs",
+          "refId": "A",
+          "region": "default",
+          "sqlExpression": "",
+          "statistic": "Average",
+          "statsGroups": [
+            "bin($__interval)",
+            "CbsId"
+          ]
+        },
+        {
+          "datasource": "CloudWatch",
+          "dimensions": {},
+          "expression": "fields Workload = \"elbLogsV2\" as elblogs\n| filter strcontains(\"$CBS_ID\", CbsId)\n| stats sum(elblogs) as ELBLogs by bin($__interval), CbsId",
+          "hide": false,
+          "id": "",
+          "label": "",
+          "logGroups": [
+            {
+              "accountId": "${account_id}",
+              "arn": "arn:aws:logs:ca-central-1:${account_id}:log-group:/aws/lambda/CBS-SQSRouterLambda-${env}-ca-central-1:*",
+              "name": "/aws/lambda/CBS-SQSRouterLambda-${env}-ca-central-1"
+            }
+          ],
+          "matchExact": true,
+          "metricEditorMode": 0,
+          "metricName": "",
+          "metricQueryType": 0,
+          "namespace": "",
+          "period": "",
+          "queryMode": "Logs",
+          "refId": "B",
+          "region": "default",
+          "sqlExpression": "",
+          "statistic": "Average",
+          "statsGroups": [
+            "bin($__interval)",
+            "CbsId"
+          ]
+        }
+      ],
+      "title": "ELB Logs",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "CloudWatch",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "index": 0,
+                  "text": "Off"
+                }
+              },
+              "type": "value"
+            },
+            {
+              "options": {
+                "from": 1,
+                "result": {
+                  "index": 1,
+                  "text": "On"
+                },
+                "to": 1000
+              },
+              "type": "range"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 0
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 41
+      },
+      "id": 6,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": "CloudWatch",
+          "dimensions": {},
+          "expression": "fields Workload like /Metadata$/ as isMetadata, CbsSensorId as CbsId\n| filter strcontains(\"$CBS_ID\", CbsId)\n| stats sum(isMetadata) as Metadata by bin(24h), CbsId",
+          "id": "",
+          "label": "",
+          "logGroups": [
+            {
+              "accountId": "${account_id}",
+              "arn": "arn:aws:logs:ca-central-1:${account_id}:log-group:/aws/lambda/CBS-TransportLambda-${env}-ca-central-1:*",
+              "name": "/aws/lambda/CBS-TransportLambda-${env}-ca-central-1"
+            }
+          ],
+          "matchExact": true,
+          "metricEditorMode": 0,
+          "metricName": "",
+          "metricQueryType": 0,
+          "namespace": "",
+          "period": "",
+          "queryMode": "Logs",
+          "refId": "A",
+          "region": "default",
+          "sqlExpression": "",
+          "statistic": "Average",
+          "statsGroups": [
+            "bin(24h)",
+            "CbsId"
+          ]
+        },
+        {
+          "datasource": "CloudWatch",
+          "dimensions": {},
+          "expression": "fields Workload like /Metadata$/ as isMetadata\n| filter strcontains(\"$CBS_ID\", CbsId)\n| stats sum(isMetadata) as Metadata by bin(24h), CbsId",
+          "hide": false,
+          "id": "",
+          "label": "",
+          "logGroups": [
+            {
+              "accountId": "${account_id}",
+              "arn": "arn:aws:logs:ca-central-1:${account_id}:log-group:/aws/lambda/CBS-SQSRouterLambda-${env}-ca-central-1:*",
+              "name": "/aws/lambda/CBS-SQSRouterLambda-${env}-ca-central-1"
+            }
+          ],
+          "matchExact": true,
+          "metricEditorMode": 0,
+          "metricName": "",
+          "metricQueryType": 0,
+          "namespace": "",
+          "period": "",
+          "queryMode": "Logs",
+          "refId": "B",
+          "region": "default",
+          "sqlExpression": "",
+          "statistic": "Average",
+          "statsGroups": [
+            "bin(24h)",
+            "CbsId"
+          ]
+        }
+      ],
+      "title": "Accelerator Metadata",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 49
+      },
+      "id": 9,
+      "panels": [],
+      "title": "Transport Lambda",
+      "type": "row"
+    },
+    {
+      "datasource": "CloudWatch",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 50
+      },
+      "id": 10,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": "CloudWatch",
+          "dimensions": {},
+          "expression": "fields @message\r\n| filter strcontains(\"$CBS_ID\", CbsSensorId)",
+          "id": "",
+          "label": "",
+          "logGroups": [
+            {
+              "accountId": "${account_id}",
+              "arn": "arn:aws:logs:ca-central-1:${account_id}:log-group:/aws/lambda/CBS-TransportLambda-${env}-ca-central-1:*",
+              "name": "/aws/lambda/CBS-TransportLambda-${env}-ca-central-1"
+            }
+          ],
+          "matchExact": true,
+          "metricEditorMode": 0,
+          "metricName": "",
+          "metricQueryType": 0,
+          "namespace": "",
+          "period": "",
+          "queryMode": "Logs",
+          "refId": "A",
+          "region": "default",
+          "sqlExpression": "",
+          "statistic": "Average",
+          "statsGroups": []
+        }
+      ],
+      "title": "Transport Lambda Logs",
+      "type": "logs"
+    },
+    {
+      "datasource": "CloudWatch",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 58
+      },
+      "id": 11,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": "CloudWatch",
+          "dimensions": {},
+          "expression": "fields @message\n| filter level not like /INFO|WARNING/\n| filter @message not like /START|END|REPORT/",
+          "id": "",
+          "label": "",
+          "logGroups": [
+            {
+              "accountId": "${account_id}",
+              "arn": "arn:aws:logs:ca-central-1:${account_id}:log-group:/aws/lambda/CBS-TransportLambda-${env}-ca-central-1:*",
+              "name": "/aws/lambda/CBS-TransportLambda-${env}-ca-central-1"
+            }
+          ],
+          "matchExact": true,
+          "metricEditorMode": 0,
+          "metricName": "",
+          "metricQueryType": 0,
+          "namespace": "",
+          "period": "",
+          "queryMode": "Logs",
+          "refId": "A",
+          "region": "default",
+          "sqlExpression": "",
+          "statistic": "Average",
+          "statsGroups": []
+        }
+      ],
+      "title": "Transport Lambda Error Logs",
+      "type": "logs"
+    },
+    {
+      "datasource": "CloudWatch",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 16,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 66
+      },
+      "id": 12,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "min",
+            "max"
+          ],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": "CloudWatch",
+          "dimensions": {
+            "FunctionName": "CBS-TransportLambda-${env}-ca-central-1"
+          },
+          "expression": "",
+          "id": "",
+          "label": "",
+          "logGroups": [],
+          "matchExact": true,
+          "metricEditorMode": 0,
+          "metricName": "Duration",
+          "metricQueryType": 0,
+          "namespace": "AWS/Lambda",
+          "period": "",
+          "queryMode": "Metrics",
+          "refId": "A",
+          "region": "default",
+          "sqlExpression": "",
+          "statistic": "Average"
+        }
+      ],
+      "title": "Transport Lambda Duration",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "CloudWatch",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 16,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 66
+      },
+      "id": 13,
+      "options": {
+        "legend": {
+          "calcs": [
+            "sum"
+          ],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": "CloudWatch",
+          "dimensions": {
+            "FunctionName": "CBS-TransportLambda-${env}-ca-central-1"
+          },
+          "expression": "filter strcontains(\"$CBS_ID\", CbsSensorId)\n| stats count(@message) as Invocations by bin(5m)",
+          "id": "",
+          "label": "",
+          "logGroups": [
+            {
+              "accountId": "${account_id}",
+              "arn": "arn:aws:logs:ca-central-1:${account_id}:log-group:/aws/lambda/CBS-TransportLambda-${env}-ca-central-1:*",
+              "name": "/aws/lambda/CBS-TransportLambda-${env}-ca-central-1"
+            }
+          ],
+          "matchExact": true,
+          "metricEditorMode": 0,
+          "metricName": "Invocations",
+          "metricQueryType": 0,
+          "namespace": "AWS/Lambda",
+          "period": "",
+          "queryMode": "Logs",
+          "refId": "A",
+          "region": "default",
+          "sqlExpression": "",
+          "statistic": "Sum",
+          "statsGroups": [
+            "bin(5m)"
+          ]
+        }
+      ],
+      "title": "Transport Lambda Invocations",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "CloudWatch",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 16,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "decbytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 6,
+        "y": 74
+      },
+      "id": 14,
+      "options": {
+        "legend": {
+          "calcs": [
+            "sum"
+          ],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": "CloudWatch",
+          "dimensions": {
+            "FunctionName": "CBS-TransportLambda-${env}-ca-central-1"
+          },
+          "expression": "filter strcontains(\"$CBS_ID\", CbsSensorId)\n| stats sum(Size) as Data by bin(5m)",
+          "id": "",
+          "label": "",
+          "logGroups": [
+            {
+              "accountId": "${account_id}",
+              "arn": "arn:aws:logs:ca-central-1:${account_id}:log-group:/aws/lambda/CBS-TransportLambda-${env}-ca-central-1:*",
+              "name": "/aws/lambda/CBS-TransportLambda-${env}-ca-central-1"
+            }
+          ],
+          "matchExact": true,
+          "metricEditorMode": 0,
+          "metricName": "Invocations",
+          "metricQueryType": 0,
+          "namespace": "AWS/Lambda",
+          "period": "",
+          "queryMode": "Logs",
+          "refId": "A",
+          "region": "default",
+          "sqlExpression": "",
+          "statistic": "Sum",
+          "statsGroups": [
+            "bin(5m)"
+          ]
+        }
+      ],
+      "title": "Data Throughput",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 82
+      },
+      "id": 15,
+      "panels": [],
+      "title": "SQS Router Lambda",
+      "type": "row"
+    },
+    {
+      "datasource": "CloudWatch",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 83
+      },
+      "id": 16,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": "CloudWatch",
+          "dimensions": {},
+          "expression": "fields @message\r\n| filter strcontains(\"$CBS_ID\", CbsId)",
+          "id": "",
+          "label": "",
+          "logGroups": [
+            {
+              "accountId": "${account_id}",
+              "arn": "arn:aws:logs:ca-central-1:${account_id}:log-group:/aws/lambda/CBS-SQSRouterLambda-${env}-ca-central-1:*",
+              "name": "/aws/lambda/CBS-SQSRouterLambda-${env}-ca-central-1"
+            }
+          ],
+          "matchExact": true,
+          "metricEditorMode": 0,
+          "metricName": "",
+          "metricQueryType": 0,
+          "namespace": "",
+          "period": "",
+          "queryMode": "Logs",
+          "refId": "A",
+          "region": "default",
+          "sqlExpression": "",
+          "statistic": "Average",
+          "statsGroups": []
+        }
+      ],
+      "title": "SQS Router Lambda Logs",
+      "type": "logs"
+    },
+    {
+      "datasource": "CloudWatch",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 91
+      },
+      "id": 17,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": "CloudWatch",
+          "dimensions": {},
+          "expression": "fields @message\n| filter level not like /INFO|WARNING/\n| filter @message not like /START|END|REPORT/",
+          "id": "",
+          "label": "",
+          "logGroups": [
+            {
+              "accountId": "${account_id}",
+              "arn": "arn:aws:logs:ca-central-1:${account_id}:log-group:/aws/lambda/CBS-SQSRouterLambda-${env}-ca-central-1:*",
+              "name": "/aws/lambda/CBS-SQSRouterLambda-${env}-ca-central-1"
+            }
+          ],
+          "matchExact": true,
+          "metricEditorMode": 0,
+          "metricName": "",
+          "metricQueryType": 0,
+          "namespace": "",
+          "period": "",
+          "queryMode": "Logs",
+          "refId": "A",
+          "region": "default",
+          "sqlExpression": "",
+          "statistic": "Average",
+          "statsGroups": []
+        }
+      ],
+      "title": "SQS Router Lambda Error Logs",
+      "type": "logs"
+    },
+    {
+      "datasource": "CloudWatch",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 16,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 99
+      },
+      "id": 18,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "min",
+            "max"
+          ],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": "CloudWatch",
+          "dimensions": {
+            "FunctionName": "CBS-SQSRouterLambda-${env}-ca-central-1"
+          },
+          "expression": "",
+          "id": "",
+          "label": "",
+          "logGroups": [],
+          "matchExact": true,
+          "metricEditorMode": 0,
+          "metricName": "Duration",
+          "metricQueryType": 0,
+          "namespace": "AWS/Lambda",
+          "period": "",
+          "queryMode": "Metrics",
+          "refId": "A",
+          "region": "default",
+          "sqlExpression": "",
+          "statistic": "Average"
+        }
+      ],
+      "title": "SQS Router Lambda Duration",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "CloudWatch",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 16,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 99
+      },
+      "id": 19,
+      "options": {
+        "legend": {
+          "calcs": [
+            "sum"
+          ],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": "CloudWatch",
+          "dimensions": {
+            "FunctionName": "CBS-SQSRouterLambda-${env}-ca-central-1"
+          },
+          "expression": "filter strcontains(\"$CBS_ID\", CbsId)\n| stats count(@message) as Invocations by bin(5m)",
+          "id": "",
+          "label": "",
+          "logGroups": [
+            {
+              "accountId": "${account_id}",
+              "arn": "arn:aws:logs:ca-central-1:${account_id}:log-group:/aws/lambda/CBS-SQSRouterLambda-${env}-ca-central-1:*",
+              "name": "/aws/lambda/CBS-SQSRouterLambda-${env}-ca-central-1"
+            }
+          ],
+          "matchExact": true,
+          "metricEditorMode": 0,
+          "metricName": "Invocations",
+          "metricQueryType": 0,
+          "namespace": "AWS/Lambda",
+          "period": "",
+          "queryMode": "Logs",
+          "refId": "A",
+          "region": "default",
+          "sqlExpression": "",
+          "statistic": "Sum",
+          "statsGroups": [
+            "bin(5m)"
+          ]
+        }
+      ],
+      "title": "SQS Router Lambda Invocations",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 107
+      },
+      "id": 20,
+      "panels": [],
+      "title": "SQS",
+      "type": "row"
+    },
+    {
+      "datasource": "CloudWatch",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 8,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 108
+      },
+      "id": 21,
+      "options": {
+        "legend": {
+          "calcs": [
+            "sum"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Total",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": "CloudWatch",
+          "dimensions": {
+            "QueueName": "CBS-SQS-${env}-ca-central-1"
+          },
+          "expression": "",
+          "id": "",
+          "label": "",
+          "logGroups": [],
+          "matchExact": true,
+          "metricEditorMode": 0,
+          "metricName": "NumberOfMessagesSent",
+          "metricQueryType": 0,
+          "namespace": "AWS/SQS",
+          "period": "",
+          "queryMode": "Metrics",
+          "refId": "A",
+          "region": "default",
+          "sqlExpression": "",
+          "statistic": "Sum"
+        },
+        {
+          "datasource": "CloudWatch",
+          "dimensions": {
+            "QueueName": "CBS-SQS-${env}-ca-central-1"
+          },
+          "expression": "",
+          "hide": false,
+          "id": "",
+          "label": "",
+          "logGroups": [],
+          "matchExact": true,
+          "metricEditorMode": 0,
+          "metricName": "NumberOfMessagesReceived",
+          "metricQueryType": 0,
+          "namespace": "AWS/SQS",
+          "period": "",
+          "queryMode": "Metrics",
+          "refId": "B",
+          "region": "default",
+          "sqlExpression": "",
+          "statistic": "Sum"
+        },
+        {
+          "datasource": "CloudWatch",
+          "dimensions": {
+            "QueueName": "CBS-SQS-${env}-ca-central-1"
+          },
+          "expression": "",
+          "hide": false,
+          "id": "",
+          "label": "",
+          "logGroups": [],
+          "matchExact": true,
+          "metricEditorMode": 0,
+          "metricName": "NumberOfMessagesDeleted",
+          "metricQueryType": 0,
+          "namespace": "AWS/SQS",
+          "period": "",
+          "queryMode": "Metrics",
+          "refId": "C",
+          "region": "default",
+          "sqlExpression": "",
+          "statistic": "Sum"
+        }
+      ],
+      "title": "Messages in Transit",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "CloudWatch",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 8,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 116
+      },
+      "id": 22,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "min",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": "CloudWatch",
+          "dimensions": {
+            "QueueName": "CBS-SQS-${env}-ca-central-1"
+          },
+          "expression": "",
+          "id": "",
+          "label": "",
+          "logGroups": [],
+          "matchExact": true,
+          "metricEditorMode": 0,
+          "metricName": "ApproximateAgeOfOldestMessage",
+          "metricQueryType": 0,
+          "namespace": "AWS/SQS",
+          "period": "",
+          "queryMode": "Metrics",
+          "refId": "A",
+          "region": "default",
+          "sqlExpression": "",
+          "statistic": "Sum"
+        }
+      ],
+      "title": "Message Latency",
+      "type": "timeseries"
+    }
+  ]
+}

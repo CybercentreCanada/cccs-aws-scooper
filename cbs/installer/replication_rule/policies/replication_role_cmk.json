@@ -1,0 +1,22 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": [
+        "kms:Decrypt"
+      ],
+      "Effect": "Allow",
+      "Condition": {
+        "StringLike": {
+          "kms:ViaService": "s3.ca-central-1.amazonaws.com",
+          "kms:EncryptionContext:aws:s3:arn": [
+            "arn:aws:s3:::$control_tower_bucket_name/*"
+          ]
+        }
+      },
+      "Resource": [
+        "$control_tower_cmk_arn"
+      ]
+    }
+  ]
+}

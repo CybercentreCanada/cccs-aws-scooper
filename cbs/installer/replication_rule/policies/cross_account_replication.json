@@ -1,0 +1,79 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": [
+        "s3:ListBucket",
+        "s3:GetReplicationConfiguration",
+        "s3:GetObjectVersionForReplication",
+        "s3:GetObjectVersionAcl",
+        "s3:GetObjectVersionTagging",
+        "s3:GetObjectRetention",
+        "s3:GetObjectLegalHold"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        "arn:aws:s3:::$source_bucket_name",
+        "arn:aws:s3:::$source_bucket_name/*"
+      ]
+    },
+    {
+      "Action": [
+        "s3:ReplicateObject",
+        "s3:ReplicateDelete",
+        "s3:ReplicateTags",
+        "s3:GetObjectVersionTagging",
+        "s3:ObjectOwnerOverrideToBucketOwner"
+      ],
+      "Effect": "Allow",
+      "Condition": {
+        "StringLikeIfExists": {
+          "s3:x-amz-server-side-encryption": [
+            "aws:kms",
+            "aws:kms:dsse",
+            "AES256"
+          ]
+        }
+      },
+      "Resource": [
+        "arn:aws:s3:::$destination_bucket_name/*"
+      ]
+    },
+    {
+      "Action": [
+        "kms:Decrypt"
+      ],
+      "Effect": "Allow",
+      "Condition": {
+        "StringLike": {
+          "kms:ViaService": "s3.ca-central-1.amazonaws.com",
+          "kms:EncryptionContext:aws:s3:arn": [
+            "arn:aws:s3:::$source_bucket_name/*"
+          ]
+        }
+      },
+      "Resource": [
+        "$source_bucket_encryption_key_arn"
+      ]
+    },
+    {
+      "Action": [
+        "kms:Encrypt"
+      ],
+      "Effect": "Allow",
+      "Condition": {
+        "StringLike": {
+          "kms:ViaService": [
+            "s3.ca-central-1.amazonaws.com"
+          ],
+          "kms:EncryptionContext:aws:s3:arn": [
+            "arn:aws:s3:::$destination_bucket_name/*"
+          ]
+        }
+      },
+      "Resource": [
+        "$destination_bucket_encryption_key_arn"
+      ]
+    }
+  ]
+}

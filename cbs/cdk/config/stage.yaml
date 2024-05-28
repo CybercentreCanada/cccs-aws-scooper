@@ -1,0 +1,22 @@
+# Environment
+Environment: stage
+AgentAccount:
+OnlyAgent: false
+UsePAT: true
+
+# Variables
+PartnerConfigBucket:  # 2.0 partners
+PartnerInventoryBucket:  # 1.0 partners
+SQSArn:
+OpsGenieURL:
+UnknownWorkloadsEmails: []
+
+# IAM
+UseRole: false
+ImportUsersOrRoles: true
+DevOpsUser: dev-ops_user-sensoraws-stage-004
+DevOpsGroup: dev-ops_group-sensoraws-stage-004
+ReaderUser: cbs-user-stage
+ReaderUserGroup: reader_group-sensoraws-stage-002
+GrafanaUser: grafana_user-sensoraws-stage-001
+GrafanaUserGroup: grafana_group-sensoraws-stage-001

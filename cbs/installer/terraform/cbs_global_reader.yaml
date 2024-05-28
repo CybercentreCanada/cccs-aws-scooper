@@ -1,0 +1,18 @@
+Resources:
+  CBSGlobalReader:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: cbs-global-reader
+      Description: Global Reader Role for CBS
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: ${cccs_role_arn}
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/ReadOnlyAccess
+      Tags:
+        - Key: Owner
+          Value: CBS

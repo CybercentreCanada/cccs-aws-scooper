@@ -1,0 +1,39 @@
+name: Build CBS Installer
+on:
+  push:
+    branches:
+      - staging
+      - production
+    paths:
+      - cbs/installer/**
+
+jobs:
+  Build-CBS-Installer:
+    runs-on:
+      group: CBS
+      labels: [cbs, prd]
+    environment: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get temporary credentials
+        uses: ./.github/actions/iamra
+        with:
+          profile-arn: ${{ vars.IAMRA_PROFILE_ARN }}
+          role-arn: ${{ vars.DEVOPS_ROLE_ARN }}
+          trust-anchor-arn: ${{ vars.IAMRA_TRUST_ANCHOR_ARN }}
+          certificate: ${{ secrets.IAMRA_CERT }}
+          private-key: ${{ secrets.IAMRA_KEY }}
+      - name: Set up Python 3.9.16
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9.16"
+      - name: Build CBS Installer
+        run: |
+          echo '{"bucket_name": "${{ vars.PARTNER_CONFIG_BUCKET_NAME }}", "cccs_role_arn": "${{ vars.CCCS_ROLE_ARN }}"}' > cbs/installer/remote_config.json
+          pants package cbs/installer:cbs
+      - name: Upload artifact to S3
+        run: |
+          pants run .github/scripts:upload_artifact -- \
+            --artifact=dist/cbs \
+            --bucket=${{ vars.ARTIFACT_BUCKET_NAME }} \
+            --key=cbs

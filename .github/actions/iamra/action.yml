@@ -1,0 +1,52 @@
+name: IAM Roles Anywhere Action
+description: An action that utilizes certificates and their associated private keys to sign requests to AWS IAM Roles Anywhere's CreateSession API and retrieve temporary AWS security credentials.
+
+inputs:
+  profile-arn:
+    description: Profile to pull policies from
+    required: true
+  role-arn:
+    description: Target role to assume
+    required: true
+  trust-anchor-arn:
+    description: Trust anchor to use for authentication
+    required: true
+  certificate:
+    description: Certificate
+    required: true
+  private-key:
+    description: Private key
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Write certificate and private key
+      run: |
+        echo "${{ inputs.certificate }}" > certificate.crt
+        echo "${{ inputs.private-key }}" > private.key
+      shell: bash
+    - name: Get temporary credentials
+      id: temporary-credentials
+      run: |
+        curl -O https://rolesanywhere.amazonaws.com/releases/1.1.1/X86_64/Linux/aws_signing_helper
+        chmod +x aws_signing_helper
+        ./aws_signing_helper credential-process \
+          --profile-arn=${{ inputs.profile-arn }} \
+          --role-arn=${{ inputs.role-arn }} \
+          --trust-anchor-arn=${{ inputs.trust-anchor-arn }} \
+          --certificate=certificate.crt \
+          --private-key=private.key \
+          > temporary_credentials.json
+        python3 ./.github/scripts/export_aws_credentials.py
+      shell: bash
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-region: ca-central-1
+        aws-access-key-id: ${{ steps.temporary-credentials.outputs.AccessKeyId }}
+        aws-secret-access-key: ${{ steps.temporary-credentials.outputs.SecretAccessKey }}
+        aws-session-token: ${{ steps.temporary-credentials.outputs.SessionToken }}
+    - name: Clean-up temporary credentials
+      run: rm certificate.crt private.key temporary_credentials.json
+      shell: bash
