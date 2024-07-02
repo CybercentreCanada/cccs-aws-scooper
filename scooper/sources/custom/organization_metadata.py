@@ -22,14 +22,16 @@ Notwithstanding the foregoing, third party components included herein are subjec
 noted in the files associated with those components.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from boto3 import client
 
 from scooper.sources import LogSource
 from scooper.sources.report import LoggingReport
 from scooper.utils.enum import paginate
-from scooper.utils.logger import setup_logging
+from scooper.utils.logger import get_logger
+
+_logger = get_logger()
 
 
 class OrganizationMetadata(LogSource):
@@ -37,17 +39,16 @@ class OrganizationMetadata(LogSource):
         super().__init__()
         self._level = level
         self._client = client("organizations")
-        self._logger = setup_logging(self.__class__.__name__)
 
     def enumerate(self) -> dict:
-        self._logger.info("Getting organization information...")
+        _logger.info("Getting organization information...")
         organization = self._client.describe_organization()["Organization"]
 
-        self._logger.info("Enumerating organization's accounts...")
+        _logger.info("Enumerating organization's accounts...")
         accounts = paginate(self._client, "list_accounts", "Accounts")
 
         return {
-            "event_time": datetime.utcnow(),
+            "event_time": datetime.now(timezone.utc),
             "organization": organization,
             "accounts": accounts,
         }

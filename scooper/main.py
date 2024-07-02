@@ -22,9 +22,7 @@ Notwithstanding the foregoing, third party components included herein are subjec
 noted in the files associated with those components.
 """
 
-import inspect
-import sys
-from dataclasses import asdict
+from dataclasses import asdict, is_dataclass
 from json import load
 from os import getenv
 from pathlib import Path
@@ -35,18 +33,19 @@ import click
 
 from scooper.cdk.scooper.scooper_stack import Scooper
 from scooper.config import ScooperConfig
+from scooper.incident_response.cloudtrail import write_cloudtrail_scoop_to_s3
 from scooper.sources import custom, native
-from scooper.sources.report import LoggingEnumerationReport
-from scooper.utils.io import write_dict_to_file, write_dict_to_s3
-from scooper.utils.logger import setup_logging
+from scooper.sources.custom.lambda_layer import LambdaLayer
+from scooper.sources.report import LoggingEnumerationReport, LoggingReport
+from scooper.utils.io import date_range_input, write_dict_to_file, write_dict_to_s3
+from scooper.utils.logger import get_logger
 
-# Dynamically load in names of custom log sources
-CUSTOM_SOURCES = {
-    name
-    for name, _ in inspect.getmembers(sys.modules[custom.__name__], inspect.isclass)
-}
+LambdaLayer().import_layer(
+    "arn:aws:lambda:ca-central-1:519133912246:layer:CBSCommonLayer:4", "cbs_common"
+)
+from cbs_common.aws.sso_metadata import SSOMetadata
 
-logger = setup_logging("Scooper", is_module=False)
+_logger = get_logger()
 
 level = click.option(
     "--level",
@@ -62,9 +61,17 @@ region = click.option(
     default="ca-central-1",
 )
 role_name = click.option(
-    "--role_name",
+    "--role-name",
     help="Name of role with organization account access",
     default="OrganizationAccountAccessRole",
+)
+cloudtrail_scoop = click.option(
+    "--cloudtrail-scoop",
+    is_flag=True,
+    show_default=True,
+    default=False,
+    help="Whether to perform historical CloudTrail data collection",
+    required=False,
 )
 destroy = click.option(
     "--destroy",
@@ -80,12 +87,14 @@ destroy = click.option(
 @level
 @region
 @role_name
+@cloudtrail_scoop
 @click.pass_context
 def main(
     ctx: click.core.Context,
     level: str,
     region: str,
     role_name: str,
+    cloudtrail_scoop: bool,
 ) -> None:
     scooper_config = ScooperConfig(level, region)
     ctx.obj = dict()
@@ -103,14 +112,25 @@ def main(
 
     if level == "org":
         organization_metadata = custom.OrganizationMetadata(level)
-        sso_metadata = custom.SSOMetadata(level)
+        sso_metadata = SSOMetadata()
         reports["organization_metadata"] = organization_metadata.report
-        reports["sso_metadata"] = sso_metadata.report
+        reports["sso_metadata"] = sso_metadata.get_report()
 
     for title, report in reports.items():
-        write_dict_to_file(asdict(report), Path(f"scooper/out/{title}.json"))
+        write_dict_to_file(
+            asdict(report) if is_dataclass(report) else report,
+            Path(f"scooper/out/{title}.json"),
+        )
 
     ctx.obj["reports"] = reports
+
+    if cloudtrail_scoop:
+        _logger.info("Starting CloudTrail Scoop...")
+        start_time, end_time = date_range_input()
+        bucket_name = input(
+            "Enter name of bucket you want to dump historical logs to: "
+        ).strip()
+        write_cloudtrail_scoop_to_s3(start_time, end_time, bucket_name)
 
 
 @main.command()
@@ -130,7 +150,7 @@ def configure_logging(
             [
                 report
                 for report in ctx.obj["reports"].values()
-                if report.service not in CUSTOM_SOURCES
+                if isinstance(report, LoggingReport)
             ]
         ),
         env=cdk.Environment(
@@ -161,7 +181,7 @@ def configure_logging(
         return
 
     stack_outputs = Path("scooper/out/stack_outputs.json")
-    logger.info("Deploying %s stack...", stack_name)
+    _logger.info("Deploying %s stack...", stack_name)
     run(
         [
             "cdk",
@@ -176,18 +196,24 @@ def configure_logging(
         outputs = load(f)
 
     if outputs:
-        logger.info("Reading %s outputs...", stack_name)
+        _logger.info("Reading %s outputs...", stack_name)
         bucket_name = outputs[stack_name]["BucketName"]
     else:
-        logger.critical("%s deploy failed!", stack_name)
+        _logger.critical("%s deploy failed!", stack_name)
         exit(1)
 
     if ctx.obj["scooper_config"].global_config.level == "org":
-        logger.info("Publishing %s metadata...", stack_name)
+        _logger.info("Publishing %s metadata...", stack_name)
         for name, report in ctx.obj["reports"].items():
-            if report.service in CUSTOM_SOURCES:
+            if isinstance(report, LoggingReport):
                 write_dict_to_s3(
                     report.details,
+                    bucket_name,
+                    f"scooper/{name}.json",
+                )
+            else:
+                write_dict_to_s3(
+                    report,
                     bucket_name,
                     f"scooper/{name}.json",
                 )

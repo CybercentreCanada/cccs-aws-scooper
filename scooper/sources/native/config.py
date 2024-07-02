@@ -27,7 +27,9 @@ from boto3 import client
 from scooper.sources import LogSource
 from scooper.sources.report import LoggingReport
 from scooper.utils.enum import paginate
-from scooper.utils.logger import setup_logging
+from scooper.utils.logger import get_logger
+
+_logger = get_logger()
 
 
 class Config(LogSource):
@@ -36,10 +38,9 @@ class Config(LogSource):
         self._level = level
         self._service = self.__class__.__name__
         self._client = client(self._service.lower())
-        self._logger = setup_logging(self._service)
 
     def _enumerate_config_aggregators(self) -> dict[str, dict]:
-        self._logger.info("Enumerating Configuration Aggregators...")
+        _logger.info("Enumerating Configuration Aggregators...")
         config_aggregators = paginate(
             self._client,
             "describe_configuration_aggregators",
@@ -66,7 +67,7 @@ class Config(LogSource):
         return config_aggregators
 
     def _enumerate_config_recorders(self) -> dict[str, dict]:
-        self._logger.info("Enumerating Configuration Recorders...")
+        _logger.info("Enumerating Configuration Recorders...")
 
         config_recorders = self._client.describe_configuration_recorders()[
             "ConfigurationRecorders"
@@ -83,7 +84,7 @@ class Config(LogSource):
         return config_recorders
 
     def _enumerate_delivery_channels(self) -> dict[str, dict]:
-        self._logger.info("Enumerating Delivery Channels...")
+        _logger.info("Enumerating Delivery Channels...")
 
         delivery_channels = self._client.describe_delivery_channels()[
             "DeliveryChannels"
@@ -100,7 +101,7 @@ class Config(LogSource):
         return delivery_channels
 
     def enumerate(self) -> tuple[dict[str, dict]]:
-        self._logger.info("Enumerating %s...", self._service)
+        _logger.info("Enumerating %s...", self._service)
 
         config_aggregators = self._enumerate_config_aggregators()
         config_recorders = self._enumerate_config_recorders()
@@ -116,7 +117,7 @@ class Config(LogSource):
 
         for aggregator_name, aggregator in config_aggregators.items():
             if aggregator.get("LastUpdateStatus") == "SUCCEEDED":
-                self._logger.info(
+                _logger.info(
                     "Config aggregator '%s' is already configured!", aggregator_name
                 )
                 config_enabled = True
@@ -124,7 +125,7 @@ class Config(LogSource):
 
         for recorder_name, recorder in config_recorders.items():
             if recorder.get("recording"):
-                self._logger.info(
+                _logger.info(
                     "Config recorder '%s' is already configured!", recorder_name
                 )
                 config_enabled = True

@@ -109,19 +109,22 @@ Scooper can be customized with CLI options using the following format:
 The following options can be changed to modify the Scooper deployment:
 - `--level, --l [account|org]`
   - Which level of enumeration to perform: `account` or `org`.
-  - Choose between Account Enumeration and Organization Enumeration. if `org` is specified then `role_name` must also be specified.
+  - Choose between Account Enumeration and Organization Enumeration. if `org` is specified then `--role-name` must also be specified.
   - The default level is set to `account`.
 - `--region, --r TEXT`
   - Which AWS region to enumerate.
   - Enter your desired region.
   - The default region is set to `ca-central-1`.
-- `--role_name TEXT`
+- `--role-name TEXT`
   - Name of role with organizational account access.
   - If Organization level enumeration is chosen, the name of the role with organizational account access must be specified.
   - The default name is set to `OrganizationAccountAccessRole` for users using AWS Organizations for account management, and will differ for other account factory tools.
+- `--cloudtrail-scoop`
+  - Whether to perform historical CloudTrail data collection. Aggregates CloudTrail events by hour and writes to S3 of your choice.
 - `--destroy`
   - Used to destroy all CloudFormation resources created by Scooper in the current region.
   - Users managing Scooper deployments across multiple regions must switch to each region to delete the associated resources.
+  - **Note:** Can only be used in conjunction with the `configure-logging` command.
 
 ## Development and Testing
 
@@ -136,7 +139,7 @@ To test the enumeration of the different log sources, the following commands can
 - `pytest scooper/cdk/tests/unit/test_config.py`
   - Tests Config Logs
 - `pytest scooper/cdk/tests/unit/test_cloudtrail.py`
-  - Tests Cloud Logs
+  - Tests CloudTrail Logs
 
 ## Contributions
 
@@ -268,19 +271,22 @@ Scooper peut être personnalisé avec des options CLI en utilisant le format sui
 Les options suivantes peuvent être modifiées pour changer le déploiement de Scooper :
 - `--level, --l [account|org]`
   - Le niveau d'énumération à effectuer :  `account` ou `org`.
-  - Choisissez entre l'énumération de compte et l'énumération d'organisation. Si `org` est spécifié, `role_name` doit également être spécifié.
+  - Choisissez entre l'énumération de compte et l'énumération d'organisation. Si `org` est spécifié, `--role-name` doit également être spécifié.
   - Le niveau par défaut est `account`.
 - `--region, --r TEXT`
   - Quelle région AWS s'énumérer.
   - Indiquez la région souhaitée.
   - La région par défaut est `ca-central-1`.
-- `--role_name TEXT`
+- `--role-name TEXT`
   - Nom du rôle avec accès au compte d'organisation.
   - Si l'énumération au niveau de l'organisation est choisie, le nom du rôle avec accès au compte de l'organisation doit être spécifié.
   - Le nom par défaut est `OrganizationAccountAccessRole` pour les usagers qui utilisent AWS Organizations pour la gestion des comptes, et sera différent pour les autres outils de création de comptes.
+- `--cloudtrail-scoop`
+  - Utilisé pour exécuter la collecte des données CloudTrail historiques. Agrège des CloudTrail événements par heure et les écrit au compartiment S3 de votre choix.
 - `--destroy`
   - Utilisé pour détruire toutes les ressources CloudFormation créées par Scooper dans la région actuelle.
   - Les utilisateurs qui gèrent des déploiements Scooper dans plusieurs régions doivent supprimer les ressources associées dans chaque région.
+  - **Note:** Ne peut être utilisé en conjonction avec la commande `configure-logging`.
 
 ## Essais et Développement
 
@@ -295,7 +301,7 @@ Pour tester l'énumération des différentes sources de journaux, les commandes 
 - `pytest scooper/cdk/tests/unit/test_config.py`
   - Tests des journaux Config
 - `pytest scooper/cdk/tests/unit/test_cloudtrail.py`
-  - Tests des journaux Cloudtrail
+  - Tests des journaux CloudTrail
 
 ## Contributions FR
 

@@ -29,7 +29,9 @@ from boto3 import client
 from scooper.sources import LogSource
 from scooper.sources.report import LoggingReport
 from scooper.utils.enum import paginate
-from scooper.utils.logger import setup_logging
+from scooper.utils.logger import get_logger
+
+_logger = get_logger()
 
 
 class CloudTrail(LogSource):
@@ -38,10 +40,9 @@ class CloudTrail(LogSource):
         self._level = level
         self._service = self.__class__.__name__
         self._client = client(self._service.lower())
-        self._logger = setup_logging(self._service)
 
     def enumerate(self) -> Iterator[dict]:
-        self._logger.info("Enumerating %s...", self._service)
+        _logger.info("Enumerating %s...", self._service)
         trails = paginate(self._client, "list_trails", "Trails")
 
         # Remove shadow trails
@@ -61,7 +62,7 @@ class CloudTrail(LogSource):
                 and trail["IncludeGlobalServiceEvents"]
                 and trail["IsMultiRegionTrail"]
             ):
-                self._logger.info(
+                _logger.info(
                     "%s trail '%s' is already configured!",
                     self.level.capitalize(),
                     trail["Name"],

@@ -22,15 +22,16 @@ Notwithstanding the foregoing, third party components included herein are subjec
 noted in the files associated with those components.
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from json import JSONEncoder, dump, dumps
 from pathlib import Path
+from typing import Callable, Union
 
 from boto3 import client
 
-from scooper.utils.logger import setup_logging
+from scooper.utils.logger import get_logger
 
-logger = setup_logging(__name__, is_module=False)
+_logger = get_logger()
 
 
 class ScooperEncoder(JSONEncoder):
@@ -48,7 +49,7 @@ def write_dict_to_s3(
     obj_as_json = dumps(obj, cls=ScooperEncoder, indent=2).encode()
     s3_client.put_object(Body=obj_as_json, Bucket=bucket_name, Key=object_key)
 
-    logger.info("Object written to s3://%s/%s", bucket_name, object_key)
+    _logger.info("Object written to s3://%s/%s", bucket_name, object_key)
 
 
 def write_dict_to_file(obj: dict, path: Path) -> None:
@@ -58,4 +59,45 @@ def write_dict_to_file(obj: dict, path: Path) -> None:
     with path.open("w") as out:
         dump(obj, out, cls=ScooperEncoder, indent=2)
 
-    logger.info("Object written to %s", path)
+    _logger.info("Object written to %s", path)
+
+
+def _input(message: str, *_, **__) -> Callable:
+    """Function wrapper to handle common user input needs."""
+
+    def inner(func: Callable):
+        _logger.debug(message)
+        while True:
+            user_input = input(message).strip()
+            if (result := func(user_input)) is not None:
+                return result
+            _logger.error("Invalid input: %s", user_input)
+
+    return inner
+
+
+def date_range_input() -> tuple[datetime]:
+    """CLI input for date range."""
+
+    def _validate_date(date_string: str) -> Union[datetime, None]:
+        try:
+            date = datetime.strptime(date_string, "%Y-%m-%d %H:%M:%S").astimezone(
+                timezone.utc
+            )
+            if date < (datetime.now(tz=timezone.utc) - timedelta(days=90)):
+                _logger.error("Date must be within last 90 days")
+                return None
+            _logger.debug("Date entered: %s", date.date())
+            return date
+        except ValueError:
+            return None
+
+    @_input("Enter start date (UTC date in the form of YYYY-MM-DD hh:mm:ss): ")
+    def _start_date(user_input: str) -> Union[datetime, None]:
+        return _validate_date(user_input)
+
+    @_input("Enter end date (UTC date in the form of YYYY-MM-DD hh:mm:ss): ")
+    def _end_date(user_input: str) -> Union[datetime, None]:
+        return _validate_date(user_input)
+
+    return _start_date, _end_date

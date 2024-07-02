@@ -31,8 +31,10 @@ from scooper.config import ScooperConfig
 from scooper.sources import LogSource
 from scooper.sources.report import LoggingReport
 from scooper.utils.enum import accounts_iterator, paginate
-from scooper.utils.logger import setup_logging
+from scooper.utils.logger import get_logger
 from scooper.utils.sts import assume_role
+
+_logger = get_logger()
 
 
 class CloudWatch(LogSource):
@@ -43,7 +45,6 @@ class CloudWatch(LogSource):
         self._scooper_config = scooper_config
         self._service = self.__class__.__name__
         self._client = client("logs")
-        self._logger = setup_logging(self._service)
 
     def _get_log_groups(self, logs_client: Type[BaseClient] = None) -> list[dict]:
         if logs_client is None:
@@ -57,15 +58,13 @@ class CloudWatch(LogSource):
 
         return log_groups
 
-    def enumerate(self) -> list[dict]:
-        self._logger.info(
-            "Enumerating %s-level %s Log Groups...", self.level, self._service
-        )
+    def enumerate(self) -> dict:
+        _logger.info("Enumerating %s-level %s Log Groups...", self.level, self._service)
         if self.level == "org":
             cw_log_groups = {}
             for account in accounts_iterator():
                 account_id = account["Id"]
-                self._logger.info(
+                _logger.info(
                     "Enumerating Log Groups in account '%s' (%s)...",
                     account["Name"],
                     account_id,

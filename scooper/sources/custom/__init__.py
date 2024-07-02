@@ -24,4 +24,3 @@ noted in the files associated with those components.
 
 from .organization_metadata import *  # NOQA
 from .resources_metadata import *  # NOQA
-from .sso_metadata import *  # NOQA

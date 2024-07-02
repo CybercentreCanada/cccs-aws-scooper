@@ -28,6 +28,7 @@ import aws_cdk.aws_iam as iam
 import aws_cdk.aws_s3 as s3
 from constructs import Construct
 
+from scooper.config import ScooperConfig
 from scooper.sources.report import LoggingReport
 
 
@@ -38,9 +39,12 @@ class Config(cdk.NestedStack):
         construct_id: str,
         summary: LoggingReport,
         bucket: s3.IBucket,
+        scooper_config: ScooperConfig,
         **kwargs,
     ) -> None:
         super().__init__(scope, construct_id)
+
+        self.scooper_config = scooper_config
 
         config_name = "{}Config-Scooper".format(summary.details["level"].capitalize())
         config_service_principal = iam.ServicePrincipal("config.amazonaws.com")
@@ -84,7 +88,11 @@ class Config(cdk.NestedStack):
                 principals=[config_service_principal],
                 actions=["s3:GetBucketAcl"],
                 resources=[bucket.bucket_arn],
-                # conditions={"StringEquals": {"AWS:PrincipalOrgID": _config.global_config}},
+                conditions={
+                    "StringEquals": {
+                        "AWS:PrincipalOrgID": self.scooper_config.global_config.org_id
+                    }
+                },
             )
         )
         bucket.add_to_resource_policy(
@@ -93,7 +101,11 @@ class Config(cdk.NestedStack):
                 principals=[config_service_principal],
                 actions=["s3:ListBucket"],
                 resources=[bucket.bucket_arn],
-                # conditions={"StringEquals": {"AWS:PrincipalOrgID": _config.global_config}},
+                conditions={
+                    "StringEquals": {
+                        "AWS:PrincipalOrgID": self.scooper_config.global_config.org_id
+                    }
+                },
             )
         )
         bucket.add_to_resource_policy(
@@ -105,7 +117,7 @@ class Config(cdk.NestedStack):
                 conditions={
                     "StringEquals": {
                         "s3:x-amz-acl": "bucket-owner-full-control",
-                        # "AWS:PrincipalOrgID": _config.global_config,
+                        "AWS:PrincipalOrgID": self.scooper_config.global_config.org_id,
                     },
                 },
             )

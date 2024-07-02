@@ -22,61 +22,51 @@ Notwithstanding the foregoing, third party components included herein are subjec
 noted in the files associated with those components.
 """
 
-from inspect import getmodule, stack
-from logging import INFO, WARNING, Logger, basicConfig, getLogger
-from os import environ
-from typing import Union
+import sys
+from io import BytesIO
+from pathlib import Path
+from types import ModuleType
+from urllib.request import urlopen
+from zipfile import ZipFile
 
-MESSAGE_FORMAT = "%(asctime)s %(name)s %(levelname)s: %(message)s"
-DATE_FORMAT = "%Y-%m-%dT%H:%M:%S"
-
-PROJECT_NAME = environ.get("PROJECT_NAME", "logger")
-
-is_configured = False
-root_logger = getLogger()
+import boto3
 
 
-def get_callers_name() -> str:
-    """Get the name of the module calling the `get_logger` function."""
-    current_stack = stack()[
-        2
-    ]  # Get caller's stack frame, [_get_callers_name, get_logger, caller, ...]
-    module_name = getmodule(current_stack[0]).__name__
+class LambdaLayer:
+    path = Path("/tmp/lambda_layers")
+    full_path = path / Path("python")
 
-    if (
-        module_name == "__main__"
-    ):  # Call main process after the project instead of `__main__`
-        return PROJECT_NAME
-    return module_name
+    def _exists(self, layer_name: str) -> bool:
+        """Check if Lambda Layer has already been downloaded."""
+        return Path(LambdaLayer.full_path / layer_name).exists()
 
+    def _download(self, arn: str, module_name: str) -> None:
+        """Download and extract Lambda Layer."""
+        # Get information about Lambda Layer
+        client = boto3.client("lambda")
+        response = client.get_layer_version_by_arn(Arn=arn)
+        url = response["Content"]["Location"]
+        # Download Lambda Layer and extract zip to /tmp
+        with urlopen(url) as zipresp:
+            with ZipFile(BytesIO(zipresp.read())) as zfile:
+                self._validate(zfile, module_name)
+                zfile.extractall(LambdaLayer.path)
 
-def get_logger() -> Logger:
-    """Get logger named after the calling module."""
-    name = get_callers_name()
+    def _validate(self, zip_file: ZipFile, module_name: str):
+        unexpected_module_items = [
+            path
+            for path in zip_file.namelist()
+            if not path.startswith("python/%s" % module_name)
+        ]
 
-    return getLogger(name)
+        if unexpected_module_items:
+            raise ValueError(
+                "Unexpected module paths found when unzipping module %s" % module_name
+            )
 
+    def import_layer(self, layer_version_arn: str, module_name: str) -> ModuleType:
+        """Add Lambda Layer to PYTHONPATH."""
+        if not self._exists(module_name):
+            self._download(layer_version_arn, module_name)
 
-def configure_logging() -> None:
-    """Configure the logging setting."""
-    try:
-        log_level = environ.get("LOG_LEVEL", "INFO").upper()
-        basicConfig(format=MESSAGE_FORMAT, datefmt=DATE_FORMAT, level=log_level)
-
-    except ValueError:  # ValueError: Unknown level
-        basicConfig(
-            format=MESSAGE_FORMAT, datefmt=DATE_FORMAT, level=INFO
-        )  # Fallback config
-
-
-def change_log_level(logger: Union[Logger, str], level: int = WARNING) -> None:
-    """Set the log level for the logger."""
-    if isinstance(logger, str):  # Get the logger if the name is passed
-        logger = getLogger(logger)
-
-    logger.setLevel(level)
-
-
-if not is_configured:
-    configure_logging()
-    is_configured = True
+        sys.path.append(str(LambdaLayer.full_path))

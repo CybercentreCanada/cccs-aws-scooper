@@ -28,9 +28,9 @@ from boto3 import client
 from botocore.client import BaseClient
 from botocore.exceptions import ClientError
 
-from scooper.utils.logger import setup_logging
+from scooper.utils.logger import get_logger
 
-logger = setup_logging(__name__, is_module=False)
+_logger = get_logger()
 
 
 def assume_role(
@@ -45,7 +45,7 @@ def assume_role(
             RoleSessionName=role_session_name,
         )
     except ClientError as e:
-        logger.warning("Failed to assume role '%s'!\n%s", role_arn, e)
+        _logger.warning("Failed to assume role '%s'!\n%s", role_arn, e)
         return
 
     credentials = response["Credentials"]

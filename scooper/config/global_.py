@@ -27,9 +27,9 @@ from dataclasses import dataclass
 from boto3 import client
 from botocore.exceptions import ClientError
 
-from scooper.utils.logger import setup_logging
+from scooper.utils.logger import get_logger
 
-logger = setup_logging("ScooperConfig", is_module=False)
+_logger = get_logger()
 
 
 @dataclass
@@ -50,9 +50,10 @@ class GlobalConfig:
                 self.org_id = self._organizations_client.describe_organization()[
                     "Organization"
                 ]["Id"]
-            except ClientError:
-                logger.error(
-                    "You need to run Scooper from your organization's management account for org-level enumeration"
+            except ClientError as e:
+                _logger.error(
+                    "You need to run Scooper from your organization's management account for org-level enumeration",
+                    e,
                 )
                 exit(1)
         self.account_id = client("sts").get_caller_identity()["Account"]

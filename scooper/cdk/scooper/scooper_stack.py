@@ -34,8 +34,10 @@ import aws_cdk.aws_s3 as s3
 from constructs import Construct
 
 from scooper.config import ScooperConfig
-from scooper.sources.report import LoggingEnumerationReport
-from scooper.utils.logger import setup_logging
+from scooper.sources.report import LoggingEnumerationReport, LoggingReport
+from scooper.utils.logger import get_logger
+
+_logger = get_logger()
 
 
 class Scooper(cdk.Stack):
@@ -52,10 +54,6 @@ class Scooper(cdk.Stack):
         self.scooper_config = scooper_config
         self.reports = logging_enumeration_report.reports
 
-        logger = setup_logging(
-            "{}Stack".format(self.__class__.__name__), is_module=False
-        )
-
         self._scooper_key = None
         self._scooper_bucket = None
         self._databricks_reader = None
@@ -66,14 +64,12 @@ class Scooper(cdk.Stack):
         self._scooper_cross_account = None
 
         for logging in logging_enumeration_report.reports:
-            if (logging.enabled and logging.owned_by_scooper) or (
-                not logging.enabled and not logging.owned_by_scooper
-            ):
+            if self.check_logging(logging):
                 if logging.enabled:
-                    logger.info("%s is enabled!", logging.service)
+                    _logger.info("%s is enabled!", logging.service)
                 else:
-                    logger.info("%s is disabled!", logging.service)
-                    logger.info("Configuring %s logging...", logging.service)
+                    _logger.info("%s is disabled!", logging.service)
+                    _logger.info("Configuring %s logging...", logging.service)
                 try:
                     module = import_module(
                         f"scooper.cdk.stacks.{logging.service.lower()}"
@@ -87,26 +83,16 @@ class Scooper(cdk.Stack):
                         scooper_config=self.scooper_config,
                     )
                 except ModuleNotFoundError:
-                    logger.warning("CDK stack for '%s' not found!", logging.service)
+                    _logger.warning("CDK stack for '%s' not found!", logging.service)
             elif logging.enabled and not logging.owned_by_scooper:
-                logger.info("%s is enabled!", logging.service)
+                _logger.info("%s is enabled!", logging.service)
 
         cdk.CfnOutput(self, "BucketName", value=self.scooper_bucket.bucket_name)
 
-        if self.scooper_config.global_config.level == "org":
-            cdk.CfnOutput(
-                self, "DestinationARN", value=self.scooper_cross_account.destination_arn
-            )
-            cdk.CfnOutput(
-                self,
-                "DestinationPolicy",
-                value=str(self.scooper_cross_account.policy_document.to_json()),
-            )
-            cdk.CfnOutput(
-                self,
-                "FirehoseDeliveryStreamName",
-                value=self.scooper_firehose.delivery_stream_name,
-            )
+    def check_logging(self, logging: LoggingReport) -> bool:
+        return (logging.enabled and logging.owned_by_scooper) or (
+            not logging.enabled and not logging.owned_by_scooper
+        )
 
     @property
     def scooper_key(self) -> kms.IKey:

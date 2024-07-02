@@ -27,9 +27,9 @@ from botocore.client import BaseClient
 from botocore.exceptions import ClientError
 from tqdm import tqdm
 
-from scooper.utils.logger import setup_logging
+from scooper.utils.logger import get_logger
 
-logger = setup_logging(__name__, is_module=False)
+_logger = get_logger()
 
 
 def paginate(client: type[BaseClient], command: str, array: str, **kwargs):
@@ -44,7 +44,7 @@ def paginate(client: type[BaseClient], command: str, array: str, **kwargs):
                 elements.extend(page.get(array, []))
                 pbar.update()
     except Exception as e:
-        logger.error("Pagination failed: %s", e)
+        _logger.error("Pagination failed: %s", e)
 
     return elements
 
