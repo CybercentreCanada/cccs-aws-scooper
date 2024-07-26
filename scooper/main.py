@@ -37,6 +37,7 @@ from scooper.incident_response.cloudtrail import write_cloudtrail_scoop_to_s3
 from scooper.sources import custom, native
 from scooper.sources.custom.lambda_layer import LambdaLayer
 from scooper.sources.report import LoggingEnumerationReport, LoggingReport
+from scooper.utils.cli import S3LifecycleRule, lifecycle_tokenizer
 from scooper.utils.io import date_range_input, write_dict_to_file, write_dict_to_s3
 from scooper.utils.logger import get_logger
 
@@ -80,6 +81,13 @@ destroy = click.option(
     default=False,
     help="Destroy CloudFormation Resources created by Scooper",
     required=False,
+)
+lifecycle_rules = click.option(
+    "--lifecycle-rules",
+    help="Specify comma-separated S3 storage class(es) and duration(s) in days of lifecycle protection for Scooper S3 bucket",
+    type=str,
+    required=False,
+    callback=lifecycle_tokenizer,
 )
 
 
@@ -135,10 +143,12 @@ def main(
 
 @main.command()
 @destroy
+@lifecycle_rules
 @click.pass_context
 def configure_logging(
     ctx: click.core.Context,
     destroy: bool,
+    lifecycle_rules: list[S3LifecycleRule],
 ) -> None:
     app = cdk.App()
     stack_name = "Scooper"
@@ -157,6 +167,7 @@ def configure_logging(
             account=getenv("CDK_DEFAULT_ACCOUNT"), region=getenv("CDK_DEFAULT_REGION")
         ),
         termination_protection=True,
+        lifecycle_rules=lifecycle_rules,
     )
 
     if destroy:

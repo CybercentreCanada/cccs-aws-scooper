@@ -35,6 +35,7 @@ from constructs import Construct
 
 from scooper.config import ScooperConfig
 from scooper.sources.report import LoggingEnumerationReport, LoggingReport
+from scooper.utils.cli import S3LifecycleRule
 from scooper.utils.logger import get_logger
 
 _logger = get_logger()
@@ -47,12 +48,14 @@ class Scooper(cdk.Stack):
         construct_id: str,
         scooper_config: ScooperConfig,
         logging_enumeration_report: LoggingEnumerationReport,
+        lifecycle_rules: list[S3LifecycleRule],
         **kwargs,
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
         self.scooper_config = scooper_config
         self.reports = logging_enumeration_report.reports
+        self.lifecycle_rules = lifecycle_rules
 
         self._scooper_key = None
         self._scooper_bucket = None
@@ -124,6 +127,31 @@ class Scooper(cdk.Stack):
                 enforce_ssl=True,
                 versioned=True,
             )
+
+            transitions = []
+            expiry = None
+
+            for lifecycle_rule in self.lifecycle_rules:
+                if isinstance(lifecycle_rule.storage_class, s3.StorageClass):
+                    transitions.append(
+                        s3.Transition(
+                            storage_class=lifecycle_rule.storage_class,
+                            transition_after=cdk.Duration.days(lifecycle_rule.duration),
+                        )
+                    )
+                else:
+                    expiry = lifecycle_rule.duration
+
+            if transitions or expiry is not None:
+                self._scooper_bucket.add_lifecycle_rule(
+                    enabled=True,
+                    expiration=(
+                        cdk.Duration.days(expiry) if expiry is not None else None
+                    ),
+                    noncurrent_versions_to_retain=1,
+                    transitions=transitions if transitions else None,
+                )
+
             if self.scooper_config.databricks_reader:
                 # Allow Databricks role to read bucket
                 self._scooper_bucket.add_to_resource_policy(

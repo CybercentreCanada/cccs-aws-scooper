@@ -125,6 +125,26 @@ The following options can be changed to modify the Scooper deployment:
   - Used to destroy all CloudFormation resources created by Scooper in the current region.
   - Users managing Scooper deployments across multiple regions must switch to each region to delete the associated resources.
   - **Note:** Can only be used in conjunction with the `configure-logging` command.
+- `--lifecycle-rules TEXT` (Optional)
+  - Used to specify the S3 storage class, and duration of lifecycle policy for the Scooper S3 bucket.
+  - Formatted as follows: `STORAGE_CLASS(xd),EXPIRY(yd)`
+    - `x` represents the number of days before an object is transitioned to a given `STORAGE_CLASS`.
+    - `y` represents the number of days before an object is expired/deleted (must be greater than x).
+  - Omitting lifecycle rules on subsequent deployments with `configure-logging` will remove the lifecycle rules in place on the created S3 bucket.
+  - Supported storage classes can be found using the `python -m scooper.main configure-logging --help` command.
+  - Omitting the `--lifecycle-rules` option results in using the default storage class of `STANDARD` and no lifecycle policy will be in place on the created S3 bucket.
+  - Examples:
+    - `--lifecycle-rules "GLACIER(1d),EXPIRY(12d)"`
+     - Objects will move to GLACIER after 1 day, and expire after 12 days.
+    - `--lifecycle-rules "GLACIER(1d)"`
+     - Objects will move to GLACIER after 1 day, with no expiry.
+    - `--lifecycle-rules "EXPIRY(5d)"`
+     - Objects are stored in STANDARD and expire after 5 days.
+    - `--lifecycle-rules "INTELLIGENT_TIERING(1d),DEEP_ARCHIVE(10d),EXPIRY(12d)"`
+     - Objects will move to INTELLIGENT_TIERING after 1 day, DEEP_ARCHIVE after 10 days, and expire after 12 days.
+  - Unsupported lifecycle transitions can be found [here](https://docs.aws.amazon.com/AmazonS3/latest/userguide/lifecycle-transition-general-considerations.html).
+
+
 
 ## Development and Testing
 
@@ -259,7 +279,7 @@ Scooper peut être exécuté avec les commandes suivantes :
   - Affiche les options et les commandes disponibles.
 - `python -m scooper.main`
   - Exécute l'énumération sur les charges de travail AWS soutenues et publie les rapports localement.
-- `pants run scooper:main -- configure-logging`
+- `python -m scooper.main configure-logging`
   - Exécute l'application complète - énumération et création de la pile CloudFormation pour configurer la journalisation centralisée.
 
 
@@ -287,6 +307,23 @@ Les options suivantes peuvent être modifiées pour changer le déploiement de S
   - Utilisé pour détruire toutes les ressources CloudFormation créées par Scooper dans la région actuelle.
   - Les utilisateurs qui gèrent des déploiements Scooper dans plusieurs régions doivent supprimer les ressources associées dans chaque région.
   - **Note:** Ne peut être utilisé en conjonction avec la commande `configure-logging`.
+- `--lifecycle-rules TEXT` (Optionnel)
+  - Utilisé pour spécifier la classe de stockage S3 et la durée de la politique du cycle de vie pour le compartiment S3 Scooper.
+  - Formaté comme suit : `STORAGE_CLASS(xd),EXPIRY(yd)`
+    - `x` représente le nombre de jours avant qu'un objet ne soit transféré vers une `STORAGE_CLASS` donnée.
+    - `y` représente le nombre de jours avant qu'un objet soit expiré/supprimé (doit être supérieur à x).
+  - Omettre les règles de cycle de vie sur les déploiements ultérieurs avec `configure-logging` supprimera les règles de cycle de vie existantes en place sur le compartiment S3 créé.
+  - Omettre l'option `--lifecycle-rules` entraîne l'utilisation de la classe de stockage par défaut de `STANDARD` et aucune politique de cycle de vie ne sera en place sur le bucket S3 créé.
+  - Exemples :
+    - `--lifecycle-rules "GLACIER(1d),EXPIRY(12d)"`
+     - Les objets seront déplacés vers GLACIER après 1 jour, et expireront après 12 jours.
+    - `--lifecycle-rules "GLACIER(1d)"`
+     - Les objets seront déplacés vers GLACIER après 1 jour, sans expiration.
+    - `--lifecycle-rules  "EXPIRY(5d)"`
+     - Les objets sont stockés dans STANDARD et expirent après 5 jours.
+    - `--lifecycle-rules "INTELLIGENT_TIERING(1d),DEEP_ARCHIVE(10d),EXPIRY(12d)"`
+     - Les objets seront déplacés vers INTELLIGENT_TIERING après 1 jour, vers DEEP_ARCHIVE après 10 jours et expireront après 12 jours.
+  - Les transitions du cycle de vie non prises en charge peuvent être trouvées [ici](https://docs.aws.amazon.com/AmazonS3/latest/userguide/lifecycle-transition-general-considerations.html).
 
 ## Essais et Développement
 
