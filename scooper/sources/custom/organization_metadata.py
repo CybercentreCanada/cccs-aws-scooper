@@ -26,21 +26,17 @@ from datetime import datetime, timezone
 
 from boto3 import client
 
-from scooper.sources import LogSource
-from scooper.sources.report import LoggingReport
 from scooper.utils.enum import paginate
 from scooper.utils.logger import get_logger
 
 _logger = get_logger()
 
 
-class OrganizationMetadata(LogSource):
-    def __init__(self, level: str) -> None:
-        super().__init__()
-        self._level = level
+class OrganizationMetadata:
+    def __init__(self) -> None:
         self._client = client("organizations")
 
-    def enumerate(self) -> dict:
+    def get_report(self) -> dict:
         _logger.info("Getting organization information...")
         organization = self._client.describe_organization()["Organization"]
 
@@ -52,11 +48,3 @@ class OrganizationMetadata(LogSource):
             "organization": organization,
             "accounts": accounts,
         }
-
-    def get_report(self) -> LoggingReport:
-        return LoggingReport(
-            service=self.__class__.__name__,
-            enabled=True,
-            details=self.enumerate(),
-            owned_by_scooper=True,
-        )

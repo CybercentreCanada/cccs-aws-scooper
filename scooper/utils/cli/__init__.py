@@ -21,11 +21,3 @@ this licence may only be brought in the courts of Ontario or the Federal Court o
 Notwithstanding the foregoing, third party components included herein are subject to the ownership and licensing provisions
 noted in the files associated with those components.
 """
-
-from scooper.config.global_ import GlobalConfig
-
-
-class ScooperConfig:
-    def __init__(self, level: str) -> None:
-        self.global_config = GlobalConfig(level)
-        self.databricks_reader = False

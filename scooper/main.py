@@ -28,16 +28,17 @@ from os import getenv
 from pathlib import Path
 from subprocess import run
 
-import aws_cdk as cdk
-import click
+from aws_cdk import App, Environment
+from click import group
 
 from scooper.cdk.scooper.scooper_stack import Scooper
 from scooper.config import ScooperConfig
 from scooper.incident_response.cloudtrail import write_cloudtrail_scoop_to_s3
 from scooper.sources import custom, native
 from scooper.sources.custom.lambda_layer import LambdaLayer
-from scooper.sources.report import LoggingEnumerationReport, LoggingReport
-from scooper.utils.cli import S3LifecycleRule, lifecycle_tokenizer
+from scooper.sources.report import LoggingReport
+from scooper.utils.cli import options
+from scooper.utils.cli.callbacks import S3LifecycleRule
 from scooper.utils.io import date_range_input, write_dict_to_file, write_dict_to_s3
 from scooper.utils.logger import get_logger
 
@@ -48,65 +49,23 @@ from cbs_common.aws.sso_metadata import SSOMetadata
 
 _logger = get_logger()
 
-level = click.option(
-    "--level",
-    "--l",
-    help="Which level of enumeration to perform",
-    type=click.Choice(["account", "org"]),
-    default="account",
-)
-region = click.option(
-    "--region",
-    "--r",
-    help="Which region to enumerate",
-    default="ca-central-1",
-)
-role_name = click.option(
-    "--role-name",
-    help="Name of role with organization account access",
-    default="OrganizationAccountAccessRole",
-)
-cloudtrail_scoop = click.option(
-    "--cloudtrail-scoop",
-    is_flag=True,
-    show_default=True,
-    default=False,
-    help="Whether to perform historical CloudTrail data collection",
-    required=False,
-)
-destroy = click.option(
-    "--destroy",
-    is_flag=True,
-    show_default=True,
-    default=False,
-    help="Destroy CloudFormation Resources created by Scooper",
-    required=False,
-)
-lifecycle_rules = click.option(
-    "--lifecycle-rules",
-    help="Specify comma-separated S3 storage class(es) and duration(s) in days of lifecycle protection for Scooper S3 bucket",
-    type=str,
-    required=False,
-    callback=lifecycle_tokenizer,
-)
 
-
-@click.group(invoke_without_command=True)
-@level
-@region
-@role_name
-@cloudtrail_scoop
-@click.pass_context
+@group(invoke_without_command=True)
+@options.cloudtrail_scoop
+@options.configure_logging
+@options.destroy
+@options.level
+@options.lifecycle_rules
+@options.role_name
 def main(
-    ctx: click.core.Context,
-    level: str,
-    region: str,
-    role_name: str,
     cloudtrail_scoop: bool,
+    configure_logging: bool,
+    destroy: bool,
+    level: str,
+    lifecycle_rules: list[S3LifecycleRule],
+    role_name: str,
 ) -> None:
-    scooper_config = ScooperConfig(level, region)
-    ctx.obj = dict()
-    ctx.obj["scooper_config"] = scooper_config
+    scooper_config = ScooperConfig(level)
 
     cloudtrail = native.CloudTrail(level)
     cloudwatch = native.CloudWatch(level, role_name, scooper_config)
@@ -119,10 +78,8 @@ def main(
     }
 
     if level == "org":
-        organization_metadata = custom.OrganizationMetadata(level)
-        sso_metadata = SSOMetadata()
-        reports["organization_metadata"] = organization_metadata.report
-        reports["sso_metadata"] = sso_metadata.get_report()
+        reports["organization_metadata"] = custom.OrganizationMetadata().get_report()
+        reports["sso_metadata"] = SSOMetadata().get_report()
 
     for title, report in reports.items():
         write_dict_to_file(
@@ -130,7 +87,13 @@ def main(
             Path(f"scooper/out/{title}.json"),
         )
 
-    ctx.obj["reports"] = reports
+    if configure_logging or destroy:
+        _configure_logging(
+            config=scooper_config,
+            reports=reports,
+            destroy=destroy,
+            lifecycle_rules=lifecycle_rules,
+        )
 
     if cloudtrail_scoop:
         _logger.info("Starting CloudTrail Scoop...")
@@ -141,29 +104,23 @@ def main(
         write_cloudtrail_scoop_to_s3(start_time, end_time, bucket_name)
 
 
-@main.command()
-@destroy
-@lifecycle_rules
-@click.pass_context
-def configure_logging(
-    ctx: click.core.Context,
+def _configure_logging(
+    config: ScooperConfig,
+    reports: dict[str, LoggingReport],
     destroy: bool,
     lifecycle_rules: list[S3LifecycleRule],
 ) -> None:
-    app = cdk.App()
+    app = App()
     stack_name = "Scooper"
+
     Scooper(
         app,
         stack_name,
-        scooper_config=ctx.obj["scooper_config"],
-        logging_enumeration_report=LoggingEnumerationReport(
-            [
-                report
-                for report in ctx.obj["reports"].values()
-                if isinstance(report, LoggingReport)
-            ]
-        ),
-        env=cdk.Environment(
+        scooper_config=config,
+        logging_reports=[
+            report for report in reports.values() if isinstance(report, LoggingReport)
+        ],
+        env=Environment(
             account=getenv("CDK_DEFAULT_ACCOUNT"), region=getenv("CDK_DEFAULT_REGION")
         ),
         termination_protection=True,
@@ -213,9 +170,9 @@ def configure_logging(
         _logger.critical("%s deploy failed!", stack_name)
         exit(1)
 
-    if ctx.obj["scooper_config"].global_config.level == "org":
+    if config.global_config.level == "org":
         _logger.info("Publishing %s metadata...", stack_name)
-        for name, report in ctx.obj["reports"].items():
+        for name, report in reports.items():
             if isinstance(report, LoggingReport):
                 write_dict_to_s3(
                     report.details,

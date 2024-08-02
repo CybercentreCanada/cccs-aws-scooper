@@ -34,8 +34,8 @@ import aws_cdk.aws_s3 as s3
 from constructs import Construct
 
 from scooper.config import ScooperConfig
-from scooper.sources.report import LoggingEnumerationReport, LoggingReport
-from scooper.utils.cli import S3LifecycleRule
+from scooper.sources.report import LoggingReport
+from scooper.utils.cli.callbacks import S3LifecycleRule
 from scooper.utils.logger import get_logger
 
 _logger = get_logger()
@@ -47,14 +47,14 @@ class Scooper(cdk.Stack):
         scope: Construct,
         construct_id: str,
         scooper_config: ScooperConfig,
-        logging_enumeration_report: LoggingEnumerationReport,
+        logging_reports: list[LoggingReport],
         lifecycle_rules: list[S3LifecycleRule],
         **kwargs,
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
         self.scooper_config = scooper_config
-        self.reports = logging_enumeration_report.reports
+        self.reports = logging_reports
         self.lifecycle_rules = lifecycle_rules
 
         self._scooper_key = None
@@ -66,7 +66,7 @@ class Scooper(cdk.Stack):
         self._scooper_firehose = None
         self._scooper_cross_account = None
 
-        for logging in logging_enumeration_report.reports:
+        for logging in logging_reports:
             if self.check_logging(logging):
                 if logging.enabled:
                     _logger.info("%s is enabled!", logging.service)

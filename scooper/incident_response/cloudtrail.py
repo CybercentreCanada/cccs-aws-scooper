@@ -27,12 +27,15 @@ from dataclasses import dataclass
 from datetime import datetime
 from json import loads
 
-from boto3 import client
+from boto3 import Session, client
 
 from scooper.utils.enum import paginate
 from scooper.utils.io import write_dict_to_s3
+from scooper.utils.logger import get_logger
 
 NUM_WORKERS = 2  # We get throttled beyond this :(
+
+_logger = get_logger()
 
 
 @dataclass
@@ -42,7 +45,7 @@ class TimeRange:
 
 
 def get_cloudtrail_events(start_time: datetime, end_time: datetime) -> list[dict]:
-    """Get CloudTrail events between `start_time` and `end_time`."""
+    """Get CloudTrail events between `start_time` and `end_time` in current account and region."""
     cloudtrail_client = client("cloudtrail")
 
     time_interval = (end_time - start_time) / NUM_WORKERS
@@ -103,16 +106,24 @@ class CloudTrailDump:
 def write_cloudtrail_scoop_to_s3(
     start_time: datetime, end_time: datetime, bucket_name: str
 ) -> None:
+    """Write historical CloudTrail data to given `bucket_name`."""
+    session = Session()
+    s3_client = session.client("s3")
+    sts_client = session.client("sts")
+    account_id = sts_client.get_caller_identity()["Account"]
+    region = session.region_name
+
+    _logger.info(
+        f"Getting CloudTrail data between '{start_time}' and '{end_time}' in account '{account_id}' and region '{region}'..."
+    )
     data = get_cloudtrail_events(start_time, end_time)
     partitions = CloudTrailDump(data).partition()
-    s3_client = client("s3")
-    sts_client = client("sts")
-    account_id = sts_client.get_caller_identity()["Account"]
+    cloudtrail_prefix = f"scooper/CloudTrail/{account_id}/{region}"
 
     for datetime_, partition in partitions.items():
         write_dict_to_s3(
             obj=partition,
             bucket_name=bucket_name,
-            object_key=f"scooper/CloudTrail/{account_id}/{datetime_.year}/{datetime_.month}/{datetime_.day}/CloudTrail_{datetime_.isoformat()}.json",
+            object_key=f"{cloudtrail_prefix}/{datetime_.strftime('%Y/%m/%d')}/CloudTrail_{datetime_.isoformat()}.json",
             s3_client=s3_client,
         )

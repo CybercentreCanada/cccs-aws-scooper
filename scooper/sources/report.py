@@ -32,8 +32,3 @@ class LoggingReport:
     details: dict[str, str]
 
     owned_by_scooper: bool = False
-
-
-@dataclass
-class LoggingEnumerationReport:
-    reports: list[LoggingReport]

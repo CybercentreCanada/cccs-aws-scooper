@@ -1,4 +1,3 @@
-
 # AWS Scooper
 
 (La version française suit)
@@ -12,13 +11,11 @@
   - [Updates](#updates)
   - [Agent Management](#agent-management)
     - [Deployment and Usage](#deployment-and-usage)
-      - [Commands](#commands)
       - [CLI Options](#cli-options)
   - [Development and Testing](#development-and-testing)
   - [Contributions](#contributions)
     - [Pull Request Guidelines](#pull-request-guidelines)
   - [Cost](#cost)
-
 
 ## Licence
 
@@ -44,7 +41,6 @@ this licence may only be brought in the courts of Ontario or the Federal Court o
 **Notwithstanding the foregoing, third party components included herein are subject to the ownership and licensing provisions**
 **noted in the files associated with those components.**
 
-
 ## Description
 
 This project is designed to be run by admins to gather data about their AWS environment. Its main purpose is for data collection and aggregation of core AWS workloads in a given AWS account or organization. The collected logging reports are centralized to an S3 bucket or can be written locally as JSON files. The S3 bucket's name will be randomly generated and will contain `scooper` as part of its name. Repeated Scooper deployments will update the S3 bucket with new logging reports.
@@ -57,25 +53,21 @@ This project is designed to be run by admins to gather data about their AWS envi
 | Config Logs         | Fully Supported     |
 | CloudWatch Logs     | Reports Only        |
 
-
-
 ## Prerequisites
 
-All Deployments require:
 - [Python 3.9+](https://www.python.org/downloads/)
 - [Node.js 14.15+](https://nodejs.org/en/download)
 - [AWS CDK](https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html#getting_started_install)
 - [Bootstrapped account](https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html#getting_started_bootstrap)
-- [Activated trusted access for StackSets](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-orgs-activate-trusted-access.html)
 
 ## Installation Instructions
 
-- Clone the Repository to your local machine using Git:
-  `git clone [link here]`
-- Change your Current directory to the project directory:
-  `cd cbs-aws-scooper`
+- Clone repository:
+  - `git clone https://github.com/CybercentreCanada/cccs-aws-scooper.git`
+- Change your current directory to the project directory:
+  - `cd cccs-aws-scooper`
 - Install necessary dependencies:
-  `python3 -m venv .venv && source .venv/bin/activate && pip install -r scooper/requirements.txt`
+  - `python3 -m venv .venv && source .venv/bin/activate && pip install -r scooper/requirements.txt`
 
 ## Updates
 
@@ -88,44 +80,27 @@ Users can also [watch the repository](https://docs.github.com/en/account-and-pro
 
 ### Deployment and Usage
 
-Scooper can be run using any AWS principal that has been assigned an [AdministratorAccess](https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AdministratorAccess.html) policy, but organizational level deployment must be run within the AWS Management account.
-
-#### Commands
+Scooper can be run using any AWS principal that has been assigned an [AdministratorAccess](https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AdministratorAccess.html) policy, but organizational level deployment must be run within the AWS management/root account.
 
 After pulling the repository to your environment and installing the required dependencies, users must have valid credentials configured to their AWS account of choice.
-Scooper can be run with the following commands:
-- `python -m scooper.main --help`
-  - Shows available options and commands.
-- `python -m scooper.main`
-  - This will only run enumeration on supported AWS workloads and publish the reports locally.
-- `python -m scooper.main configure-logging`
-  - This will run the full application - enumeration & CloudFormation stack creation to configure centralized logging.
+
+Run `python -m scooper.main --help` to see all CLI options.
 
 #### CLI Options
 
-Scooper can be customized with CLI options using the following format:
-- `python -m scooper.main --option value`
-
-The following options can be changed to modify the Scooper deployment:
-- `--level, --l [account|org]`
-  - Which level of enumeration to perform: `account` or `org`.
-  - Choose between Account Enumeration and Organization Enumeration. if `org` is specified then `--role-name` must also be specified.
-  - The default level is set to `account`.
-- `--region, --r TEXT`
-  - Which AWS region to enumerate.
-  - Enter your desired region.
-  - The default region is set to `ca-central-1`.
-- `--role-name TEXT`
-  - Name of role with organizational account access.
-  - If Organization level enumeration is chosen, the name of the role with organizational account access must be specified.
-  - The default name is set to `OrganizationAccountAccessRole` for users using AWS Organizations for account management, and will differ for other account factory tools.
+Scooper can be run with the following options:
 - `--cloudtrail-scoop`
-  - Whether to perform historical CloudTrail data collection. Aggregates CloudTrail events by hour and writes to S3 of your choice.
+  - Whether to perform historical CloudTrail data collection of current account and region. Aggregates CloudTrail events by hour and writes to S3 of your choice.
+- `--configure-logging`
+  - Spin-up CloudFormation stack based on existing logging within environment in current region.
 - `--destroy`
   - Used to destroy all CloudFormation resources created by Scooper in the current region.
   - Users managing Scooper deployments across multiple regions must switch to each region to delete the associated resources.
-  - **Note:** Can only be used in conjunction with the `configure-logging` command.
-- `--lifecycle-rules TEXT` (Optional)
+- `--level [account|org]`
+  - Which level of enumeration to perform: `account` or `org`.
+  - Choose between Account Enumeration and Organization Enumeration. if `org` is specified then `--role-name` must also be specified.
+  - The default level is set to `account`.
+- `--lifecycle-rules TEXT`
   - Used to specify the S3 storage class, and duration of lifecycle policy for the Scooper S3 bucket.
   - Formatted as follows: `STORAGE_CLASS(xd),EXPIRY(yd)`
     - `x` represents the number of days before an object is transitioned to a given `STORAGE_CLASS`.
@@ -143,8 +118,14 @@ The following options can be changed to modify the Scooper deployment:
     - `--lifecycle-rules "INTELLIGENT_TIERING(1d),DEEP_ARCHIVE(10d),EXPIRY(12d)"`
      - Objects will move to INTELLIGENT_TIERING after 1 day, DEEP_ARCHIVE after 10 days, and expire after 12 days.
   - Unsupported lifecycle transitions can be found [here](https://docs.aws.amazon.com/AmazonS3/latest/userguide/lifecycle-transition-general-considerations.html).
-
-
+- `--region TEXT`
+  - Which AWS region to enumerate.
+  - Enter your desired region.
+  - The default region is set to `ca-central-1`.
+- `--role-name TEXT`
+  - Name of role with organizational account access.
+  - If Organization level enumeration is chosen, the name of the role with organizational account access must be specified.
+  - The default name is set to `OrganizationAccountAccessRole` for users using AWS Organizations for account management, and will differ for other account factory tools.
 
 ## Development and Testing
 
@@ -177,13 +158,12 @@ Pull requests are only possible for authorized contributors to the repository. I
 
 ## Cost
 
-The usage of Scooper may incur costs associated with logging and storage resources created by Scooper's CDK stack, particularly when using S3 output.
-Account and/or organization owners are solely responsible for any costs incurred as the result of using Scooper or any derivative of it.
+The usage of Scooper will incur costs associated with logging and storage resources created by Scooper's CloudFormation stack. Account and/or organization owners are solely responsible for any costs incurred as the result of using Scooper or any derivative of it.
 
 # AWS Scooper FR
 
 - [AWS Scooper FR](#aws-scooper-fr)
-- [Licence FR](#licence-fr)
+  - [Licence FR](#licence-fr)
   - [Description FR](#description-fr)
     - [Services de Journalisation Soutenus](#services-de-journalisation-soutenus)
   - [Prérequis](#prérequis)
@@ -191,7 +171,6 @@ Account and/or organization owners are solely responsible for any costs incurred
   - [Mises à jour](#mises-à-jour)
   - [Gestion des agents](#gestion-des-agents)
     - [Déploiement et Usage](#déploiement-et-usage)
-      - [Commandes](#commandes)
       - [Options CLI](#options-cli)
   - [Essais et Développement](#essais-et-développement)
   - [Contributions FR](#contributions-fr)
@@ -242,21 +221,19 @@ Ce projet est désigné d'être exécuté par des administrateurs pour rassemble
 
 ## Prérequis
 
-Tous les déploiements nécessitent:
 - [Python 3.10+](https://www.python.org/downloads/)
 - [Node.js 14.15+](https://nodejs.org/en/download)
 - [AWS CDK](https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html#getting_started_install)
 - [Bootstrap votre compte](https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html#getting_started_bootstrap)
-- [Accès sécurisé StackSets](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-orgs-activate-trusted-access.html)
 
 ## Instructions d'installation
 
-- Clonez le dépôt sur votre machine avec Git:
-  `git clone [link here]`
+- Clonez le dépôt:
+  - `git clone https://github.com/CybercentreCanada/cccs-aws-scooper.git`
 - Changez votre répertoire actuel vers le répertoire du projet:
-  `cd cbs-aws-scooper`
+  - `cd cccs-aws-scooper`
 - Installer les dépendances requises:
-  `python3 -m venv .venv && source .venv/bin/activate && pip install -r scooper/requirements.txt`
+  - `python3 -m venv .venv && source .venv/bin/activate && pip install -r scooper/requirements.txt`
 
 ## Mises à jour
 
@@ -271,43 +248,25 @@ Pour mettre à jour le projet vers la dernière version :
 
 Scooper peut être exécutée par n'importe quel principal AWS qui a été attribué une politique [AdministratorAccess](https://docs.aws.amazon.com/fr_fr/aws-managed-policy/latest/reference/AdministratorAccess.html), mais le développement au niveau organisationnel doit être exécuté dans le compte AWS Management.
 
-#### Commandes
-
 Après avoir récupéré le dépôt dans votre environnement et installé les dépendances requises, les usagers doivent disposer d'informations d'identification valides configurées sur le compte AWS de leur choix.
-Scooper peut être exécuté avec les commandes suivantes :
-- `python -m scooper.main --help`
-  - Affiche les options et les commandes disponibles.
-- `python -m scooper.main`
-  - Exécute l'énumération sur les charges de travail AWS soutenues et publie les rapports localement.
-- `python -m scooper.main configure-logging`
-  - Exécute l'application complète - énumération et création de la pile CloudFormation pour configurer la journalisation centralisée.
 
+Lancez `python -m scooper.main --help` pour voir toutes les options CLI.
 
 #### Options CLI
 
-Scooper peut être personnalisé avec des options CLI en utilisant le format suivant :
-- `python -m scooper.main --option value`
-
-Les options suivantes peuvent être modifiées pour changer le déploiement de Scooper :
-- `--level, --l [account|org]`
-  - Le niveau d'énumération à effectuer :  `account` ou `org`.
-  - Choisissez entre l'énumération de compte et l'énumération d'organisation. Si `org` est spécifié, `--role-name` doit également être spécifié.
-  - Le niveau par défaut est `account`.
-- `--region, --r TEXT`
-  - Quelle région AWS s'énumérer.
-  - Indiquez la région souhaitée.
-  - La région par défaut est `ca-central-1`.
-- `--role-name TEXT`
-  - Nom du rôle avec accès au compte d'organisation.
-  - Si l'énumération au niveau de l'organisation est choisie, le nom du rôle avec accès au compte de l'organisation doit être spécifié.
-  - Le nom par défaut est `OrganizationAccountAccessRole` pour les usagers qui utilisent AWS Organizations pour la gestion des comptes, et sera différent pour les autres outils de création de comptes.
+Scooper peut être exécuté avec les options suivantes :
 - `--cloudtrail-scoop`
-  - Utilisé pour exécuter la collecte des données CloudTrail historiques. Agrège des CloudTrail événements par heure et les écrit au compartiment S3 de votre choix.
+  - Utilisé pour exécuter la collecte des données CloudTrail historiques sur le compte courant et la région actuelle. Agrège des CloudTrail événements par heure et les écrit au compartiment S3 de votre choix.
+- `--configure-logging`
+  - Utilisé pour créer une pile CloudFormation basée sur la journalisation existante dans l'environnement de la région actuelle.
 - `--destroy`
   - Utilisé pour détruire toutes les ressources CloudFormation créées par Scooper dans la région actuelle.
   - Les utilisateurs qui gèrent des déploiements Scooper dans plusieurs régions doivent supprimer les ressources associées dans chaque région.
-  - **Note:** Ne peut être utilisé en conjonction avec la commande `configure-logging`.
-- `--lifecycle-rules TEXT` (Optionnel)
+- `--level [account|org]`
+  - Le niveau d'énumération à effectuer :  `account` ou `org`.
+  - Choisissez entre l'énumération de compte et l'énumération d'organisation. Si `org` est spécifié, `--role-name` doit également être spécifié.
+  - Le niveau par défaut est `account`.
+- `--lifecycle-rules TEXT`
   - Utilisé pour spécifier la classe de stockage S3 et la durée de la politique du cycle de vie pour le compartiment S3 Scooper.
   - Formaté comme suit : `STORAGE_CLASS(xd),EXPIRY(yd)`
     - `x` représente le nombre de jours avant qu'un objet ne soit transféré vers une `STORAGE_CLASS` donnée.
@@ -324,6 +283,14 @@ Les options suivantes peuvent être modifiées pour changer le déploiement de S
     - `--lifecycle-rules "INTELLIGENT_TIERING(1d),DEEP_ARCHIVE(10d),EXPIRY(12d)"`
      - Les objets seront déplacés vers INTELLIGENT_TIERING après 1 jour, vers DEEP_ARCHIVE après 10 jours et expireront après 12 jours.
   - Les transitions du cycle de vie non prises en charge peuvent être trouvées [ici](https://docs.aws.amazon.com/AmazonS3/latest/userguide/lifecycle-transition-general-considerations.html).
+- `--region TEXT`
+  - Quelle région AWS s'énumérer.
+  - Indiquez la région souhaitée.
+  - La région par défaut est `ca-central-1`.
+- `--role-name TEXT`
+  - Nom du rôle avec accès au compte d'organisation.
+  - Si l'énumération au niveau de l'organisation est choisie, le nom du rôle avec accès au compte de l'organisation doit être spécifié.
+  - Le nom par défaut est `OrganizationAccountAccessRole` pour les usagers qui utilisent AWS Organizations pour la gestion des comptes, et sera différent pour les autres outils de création de comptes.
 
 ## Essais et Développement
 
@@ -356,5 +323,4 @@ Les demandes de tirage (pull requests) sont disponibles seulement pour les contr
 
 ## Coût
 
-L'utilisation de Scooper peut entraîner des coûts liés à la journalisation et aux ressources créées par la pile CDK de Scooper, en particulier lors de l'utilisation de la sortie S3.
-Les propriétaires de comptes et/ou d'organisations sont responsables des coûts encourus du fait de l'utilisation de Scooper ou d'un de ses dérivés.
+L'utilisation de Scooper entraînera des coûts liés à la journalisation et aux ressources de stockage créées par la pile CloudFormation de Scooper. Les propriétaires de comptes et/ou d'organisations sont responsables des coûts encourus du fait de l'utilisation de Scooper ou d'un de ses dérivés.

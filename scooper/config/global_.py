@@ -35,7 +35,6 @@ _logger = get_logger()
 @dataclass
 class GlobalConfig:
     level: str
-    region: str
 
     root_id: str = ""
     org_id: str = ""

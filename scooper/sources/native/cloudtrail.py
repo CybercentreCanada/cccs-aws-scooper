@@ -62,20 +62,21 @@ class CloudTrail(LogSource):
                 and trail["IncludeGlobalServiceEvents"]
                 and trail["IsMultiRegionTrail"]
             ):
-                _logger.info(
-                    "%s trail '%s' is already configured!",
-                    self.level.capitalize(),
-                    trail["Name"],
-                )
-                return LoggingReport(
-                    service=self._service,
-                    enabled=True,
-                    details={
-                        "level": self.level,
-                        "configuration": trail,
-                    },
-                    owned_by_scooper="Scooper" in trail["Name"],
-                )
+                if not trail["HasCustomEventSelectors"]:
+                    _logger.info(
+                        "%s trail '%s' is already configured!",
+                        self.level.capitalize(),
+                        trail["Name"],
+                    )
+                    return LoggingReport(
+                        service=self._service,
+                        enabled=True,
+                        details={
+                            "level": self.level,
+                            "configuration": trail,
+                        },
+                        owned_by_scooper="Scooper" in trail["Name"],
+                    )
         return LoggingReport(
             service=self._service, enabled=False, details={"level": self.level}
         )

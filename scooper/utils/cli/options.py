@@ -22,10 +22,45 @@ Notwithstanding the foregoing, third party components included herein are subjec
 noted in the files associated with those components.
 """
 
-from scooper.config.global_ import GlobalConfig
+from click import Choice, option
 
+from scooper.utils.cli.callbacks import lifecycle_tokenizer
 
-class ScooperConfig:
-    def __init__(self, level: str) -> None:
-        self.global_config = GlobalConfig(level)
-        self.databricks_reader = False
+cloudtrail_scoop = option(
+    "--cloudtrail-scoop",
+    is_flag=True,
+    default=False,
+    help="Perform historical CloudTrail data collection of current account and region",
+    required=False,
+)
+configure_logging = option(
+    "--configure-logging",
+    is_flag=True,
+    default=False,
+    help="Deploy Scooper resources",
+    required=False,
+)
+destroy = option(
+    "--destroy",
+    is_flag=True,
+    default=False,
+    help="Destroy Scooper resources",
+    required=False,
+)
+level = option(
+    "--level",
+    help="Level of enumeration/resource creation to perform",
+    type=Choice(["account", "org"]),
+    default="account",
+)
+lifecycle_rules = option(
+    "--lifecycle-rules",
+    help="Comma-separated S3 storage class(es) and duration(s) in days of lifecycle protection for Scooper S3 bucket",
+    required=False,
+    callback=lifecycle_tokenizer,
+)
+role_name = option(
+    "--role-name",
+    help="Name of role with organization account access",
+    default="OrganizationAccountAccessRole",
+)
