@@ -1,4 +1,4 @@
-name: CBS Scooper Branch Push Actions
+name: Scooper Branch Push Actions
 run-name: ${{ github.actor }} is linting and testing latest changes. 🚀
 on: [push]
 jobs:

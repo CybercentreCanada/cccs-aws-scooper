@@ -25,7 +25,6 @@ noted in the files associated with those components.
 import sys
 from io import BytesIO
 from pathlib import Path
-from types import ModuleType
 from urllib.request import urlopen
 from zipfile import ZipFile
 
@@ -52,7 +51,7 @@ class LambdaLayer:
                 self._validate(zfile, module_name)
                 zfile.extractall(LambdaLayer.path)
 
-    def _validate(self, zip_file: ZipFile, module_name: str):
+    def _validate(self, zip_file: ZipFile, module_name: str) -> None:
         unexpected_module_items = [
             path
             for path in zip_file.namelist()
@@ -64,7 +63,7 @@ class LambdaLayer:
                 "Unexpected module paths found when unzipping module %s" % module_name
             )
 
-    def import_layer(self, layer_version_arn: str, module_name: str) -> ModuleType:
+    def import_layer(self, layer_version_arn: str, module_name: str) -> None:
         """Add Lambda Layer to PYTHONPATH."""
         if not self._exists(module_name):
             self._download(layer_version_arn, module_name)

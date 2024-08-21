@@ -27,12 +27,13 @@ noted in the files associated with those components.
 import aws_cdk as cdk
 
 from scooper.cdk.scooper.scooper_stack import Scooper
+from scooper.core.constants import SCOOPER
 
 app = cdk.App()
 Scooper(
     app,
-    "Scooper",
-    tags={"Owner": "Scooper"},
+    SCOOPER,
+    tags={"Owner": SCOOPER},
 )
 
 app.synth()

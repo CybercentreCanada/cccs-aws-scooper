@@ -29,7 +29,7 @@ from moto import mock_cloudtrail, mock_config, mock_ec2, mock_s3, mock_sts
 from pytest import fixture
 
 
-@fixture(scope="module")
+@fixture(scope="module", autouse=True)
 def aws_credentials():
     """Mocked AWS Credentials for moto."""
     os.environ["AWS_ACCESS_KEY_ID"] = "testing"
@@ -40,30 +40,30 @@ def aws_credentials():
 
 
 @fixture(scope="module")
-def config_client(aws_credentials):
+def config_client():
     with mock_config():
         yield client("config")
 
 
 @fixture(scope="module")
-def sts_client(aws_credentials):
+def sts_client():
     with mock_sts():
         yield client("sts")
 
 
 @fixture(scope="module")
-def cloudtrail_client(aws_credentials):
+def cloudtrail_client():
     with mock_cloudtrail():
         yield client("cloudtrail")
 
 
 @fixture(scope="module")
-def s3_client(aws_credentials):
+def s3_client():
     with mock_s3():
         yield client("s3")
 
 
 @fixture(scope="module")
-def ec2_client(aws_credentials):
+def ec2_client():
     with mock_ec2():
         yield client("ec2")

@@ -22,26 +22,24 @@ Notwithstanding the foregoing, third party components included herein are subjec
 noted in the files associated with those components.
 """
 
-from typing import Iterator
-
 from boto3 import client
 
+from scooper.core.constants import ACCOUNT, ORG, SCOOPER
+from scooper.core.utils.logger import get_logger
+from scooper.core.utils.paginate import paginate
 from scooper.sources import LogSource
 from scooper.sources.report import LoggingReport
-from scooper.utils.enum import paginate
-from scooper.utils.logger import get_logger
 
 _logger = get_logger()
 
 
 class CloudTrail(LogSource):
     def __init__(self, level: str) -> None:
-        super().__init__()
-        self._level = level
+        super().__init__(level)
         self._service = self.__class__.__name__
         self._client = client(self._service.lower())
 
-    def enumerate(self) -> Iterator[dict]:
+    def enumerate(self) -> list[dict]:
         _logger.info("Enumerating %s...", self._service)
         trails = paginate(self._client, "list_trails", "Trails")
 
@@ -50,15 +48,14 @@ class CloudTrail(LogSource):
             trailNameList=[trail["TrailARN"] for trail in trails],
             includeShadowTrails=False,
         )["trailList"]
-        for trail in trails:
-            trail_config = self._client.get_trail(Name=trail["Name"])["Trail"]
-            yield trail_config
+
+        return [self._client.get_trail(Name=trail["Name"])["Trail"] for trail in trails]
 
     def get_report(self) -> LoggingReport:
         for trail in self.enumerate():
             if (
-                (trail["IsOrganizationTrail"] and self.level == "org")
-                or (not trail["IsOrganizationTrail"] and self.level == "account")
+                (trail["IsOrganizationTrail"] and self.level == ORG)
+                or (not trail["IsOrganizationTrail"] and self.level == ACCOUNT)
                 and trail["IncludeGlobalServiceEvents"]
                 and trail["IsMultiRegionTrail"]
             ):
@@ -70,13 +67,14 @@ class CloudTrail(LogSource):
                     )
                     return LoggingReport(
                         service=self._service,
-                        enabled=True,
+                        logging_enabled=True,
                         details={
                             "level": self.level,
                             "configuration": trail,
                         },
-                        owned_by_scooper="Scooper" in trail["Name"],
+                        owned_by_scooper=SCOOPER in trail["Name"],
                     )
+
         return LoggingReport(
-            service=self._service, enabled=False, details={"level": self.level}
+            service=self._service, logging_enabled=False, details={"level": self.level}
         )

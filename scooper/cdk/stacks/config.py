@@ -28,7 +28,8 @@ import aws_cdk.aws_iam as iam
 import aws_cdk.aws_s3 as s3
 from constructs import Construct
 
-from scooper.config import ScooperConfig
+from scooper.core.config import ScooperConfig
+from scooper.core.constants import ACCOUNT, ORG
 from scooper.sources.report import LoggingReport
 
 
@@ -37,16 +38,16 @@ class Config(cdk.NestedStack):
         self,
         scope: Construct,
         construct_id: str,
-        summary: LoggingReport,
-        bucket: s3.IBucket,
+        logging_report: LoggingReport,
+        scooper_bucket: s3.Bucket,
         scooper_config: ScooperConfig,
-        **kwargs,
+        **_,
     ) -> None:
         super().__init__(scope, construct_id)
 
-        self.scooper_config = scooper_config
-
-        config_name = "{}Config-Scooper".format(summary.details["level"].capitalize())
+        config_name = "{}Config-Scooper".format(
+            logging_report.details["level"].capitalize()
+        )
         config_service_principal = iam.ServicePrincipal("config.amazonaws.com")
 
         aggregator_role = iam.Role(
@@ -78,53 +79,49 @@ class Config(cdk.NestedStack):
         recorder_role.add_to_policy(
             iam.PolicyStatement(
                 actions=["kms:Encrypt", "kms:GenerateDataKey"],
-                resources=[bucket.encryption_key.key_arn],
+                resources=[scooper_bucket.encryption_key.key_arn],
             )
         )
 
-        bucket.add_to_resource_policy(
+        scooper_bucket.add_to_resource_policy(
             iam.PolicyStatement(
                 sid="AWSConfigBucketPermissionsCheck",
                 principals=[config_service_principal],
                 actions=["s3:GetBucketAcl"],
-                resources=[bucket.bucket_arn],
+                resources=[scooper_bucket.bucket_arn],
                 conditions={
-                    "StringEquals": {
-                        "AWS:PrincipalOrgID": self.scooper_config.global_config.org_id
-                    }
+                    "StringEquals": {"AWS:PrincipalOrgID": scooper_config.org_id}
                 },
             )
         )
-        bucket.add_to_resource_policy(
+        scooper_bucket.add_to_resource_policy(
             iam.PolicyStatement(
                 sid="AWSConfigBucketExistenceCheck",
                 principals=[config_service_principal],
                 actions=["s3:ListBucket"],
-                resources=[bucket.bucket_arn],
+                resources=[scooper_bucket.bucket_arn],
                 conditions={
-                    "StringEquals": {
-                        "AWS:PrincipalOrgID": self.scooper_config.global_config.org_id
-                    }
+                    "StringEquals": {"AWS:PrincipalOrgID": scooper_config.org_id}
                 },
             )
         )
-        bucket.add_to_resource_policy(
+        scooper_bucket.add_to_resource_policy(
             iam.PolicyStatement(
                 sid="AWSConfigBucketDelivery",
                 principals=[config_service_principal],
                 actions=["s3:PutObject"],
-                resources=[bucket.arn_for_objects("*")],
+                resources=[scooper_bucket.arn_for_objects("*")],
                 conditions={
                     "StringEquals": {
                         "s3:x-amz-acl": "bucket-owner-full-control",
-                        "AWS:PrincipalOrgID": self.scooper_config.global_config.org_id,
+                        "AWS:PrincipalOrgID": scooper_config.org_id,
                     },
                 },
             )
         )
-        bucket.encryption_key.grant_encrypt_decrypt(config_service_principal)
+        scooper_bucket.encryption_key.grant_encrypt_decrypt(config_service_principal)
 
-        if summary.details["level"] == "account":
+        if logging_report.details["level"] == ACCOUNT:
             self.aggregator = config.CfnConfigurationAggregator(
                 self,
                 config_name,
@@ -136,7 +133,7 @@ class Config(cdk.NestedStack):
                 ],
                 configuration_aggregator_name=config_name,
             )
-        elif summary.details["level"] == "org":
+        elif logging_report.details["level"] == ORG:
             self.aggregator = config.CfnConfigurationAggregator(
                 self,
                 config_name,
@@ -161,9 +158,9 @@ class Config(cdk.NestedStack):
             self,
             "DeliveryChannel",
             name="ScooperConfigDeliveryChannel",
-            s3_bucket_name=bucket.bucket_name,
+            s3_bucket_name=scooper_bucket.bucket_name,
             s3_key_prefix="Config",
-            s3_kms_key_arn=bucket.encryption_key.key_arn,
+            s3_kms_key_arn=scooper_bucket.encryption_key.key_arn,
             config_snapshot_delivery_properties=config.CfnDeliveryChannel.ConfigSnapshotDeliveryPropertiesProperty(
                 delivery_frequency="One_Hour"
             ),

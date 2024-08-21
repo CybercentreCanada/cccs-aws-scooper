@@ -23,11 +23,12 @@ noted in the files associated with those components.
 """
 
 from datetime import datetime, timezone
+from typing import Any
 
 from boto3 import client
 
-from scooper.utils.enum import paginate
-from scooper.utils.logger import get_logger
+from scooper.core.utils.logger import get_logger
+from scooper.core.utils.paginate import paginate
 
 _logger = get_logger()
 
@@ -36,7 +37,7 @@ class OrganizationMetadata:
     def __init__(self) -> None:
         self._client = client("organizations")
 
-    def get_report(self) -> dict:
+    def get_report(self) -> dict[str, Any]:
         _logger.info("Getting organization information...")
         organization = self._client.describe_organization()["Organization"]
 

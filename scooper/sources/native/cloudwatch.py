@@ -22,31 +22,29 @@ Notwithstanding the foregoing, third party components included herein are subjec
 noted in the files associated with those components.
 """
 
-from typing import Type
-
 from boto3 import client
 from botocore.client import BaseClient
 
-from scooper.config import ScooperConfig
+from scooper.core.config import ScooperConfig
+from scooper.core.constants import ORG
+from scooper.core.utils.logger import get_logger
+from scooper.core.utils.organizations import get_all_accounts
+from scooper.core.utils.paginate import paginate
+from scooper.core.utils.sts import assume_role
 from scooper.sources import LogSource
 from scooper.sources.report import LoggingReport
-from scooper.utils.enum import accounts_iterator, paginate
-from scooper.utils.logger import get_logger
-from scooper.utils.sts import assume_role
 
 _logger = get_logger()
 
 
 class CloudWatch(LogSource):
-    def __init__(self, level: str, role: str, scooper_config: ScooperConfig) -> None:
-        super().__init__()
-        self._level = level
-        self._role = role
+    def __init__(self, level: str, scooper_config: ScooperConfig) -> None:
+        super().__init__(level)
         self._scooper_config = scooper_config
         self._service = self.__class__.__name__
         self._client = client("logs")
 
-    def _get_log_groups(self, logs_client: Type[BaseClient] = None) -> list[dict]:
+    def _get_log_groups(self, logs_client: BaseClient = None) -> list[dict]:
         if logs_client is None:
             # For account-level use
             _client = self._client
@@ -54,40 +52,39 @@ class CloudWatch(LogSource):
             # For org-level use
             _client = logs_client
 
-        log_groups = paginate(_client, "describe_log_groups", "logGroups")
-
-        return log_groups
+        return paginate(_client, "describe_log_groups", "logGroups")
 
     def enumerate(self) -> dict:
         _logger.info("Enumerating %s-level %s Log Groups...", self.level, self._service)
-        if self.level == "org":
+
+        if self.level == ORG:
             cw_log_groups = {}
-            for account in accounts_iterator():
+            for account in get_all_accounts():
                 account_id = account["Id"]
                 _logger.info(
                     "Enumerating Log Groups in account '%s' (%s)...",
                     account["Name"],
                     account_id,
                 )
-                if account_id == self._scooper_config.global_config.account_id:
+                if account_id == self._scooper_config.account_id:
                     cw_log_groups[account_id] = self._get_log_groups()
                 else:
                     logs_client = assume_role(
-                        role_arn=f"arn:aws:iam::{account_id}:role/{self._role}",
+                        role_arn=f"arn:aws:iam::{account_id}:role/{self._scooper_config.org_role_name}",
                         service="logs",
-                        role_session_name=f"{account_id}-AssumeRole",
                     )
                     if logs_client is not None:
                         cw_log_groups[account_id] = self._get_log_groups(logs_client)
             return cw_log_groups
-        elif self.level == "account":
+        else:
             return self._get_log_groups()
 
     def get_report(self) -> LoggingReport:
         log_groups = self.enumerate()
+
         return LoggingReport(
             service=self._service,
-            enabled=len(log_groups) > 0,
+            logging_enabled=len(log_groups) > 0,
             details={
                 "level": self.level,
                 "configuration": log_groups,

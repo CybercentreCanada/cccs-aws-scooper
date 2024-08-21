@@ -24,6 +24,8 @@ noted in the files associated with those components.
 
 from moto import mock_cloudtrail
 
+from scooper.core.constants import ACCOUNT
+
 
 def put_trails(cloudtrail_client, s3_client):
     s3_client.create_bucket(Bucket="test-bucket")
@@ -82,12 +84,12 @@ def test_enumerate(cloudtrail_client, s3_client, sts_client):
     from scooper.sources.native.cloudtrail import CloudTrail
 
     put_trails(cloudtrail_client, s3_client)
-    rep = CloudTrail("account").report
-    confg = rep.details["configuration"]
+    report = CloudTrail(ACCOUNT).report
+    confg = report.details["configuration"]
     assert (
-        rep.enabled
+        report.logging_enabled
         and confg["S3BucketName"] == "test-bucket"
-        and not rep.owned_by_scooper
+        and not report.owned_by_scooper
     )
 
 
@@ -95,5 +97,5 @@ def test_enumerate(cloudtrail_client, s3_client, sts_client):
 def test_disabled(sts_client):
     from scooper.sources.native.cloudtrail import CloudTrail
 
-    rep = CloudTrail("account").report
-    assert not rep.enabled
+    report = CloudTrail(ACCOUNT).report
+    assert not report.logging_enabled

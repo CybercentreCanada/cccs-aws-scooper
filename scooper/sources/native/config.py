@@ -24,34 +24,35 @@ noted in the files associated with those components.
 
 from boto3 import client
 
+from scooper.core.constants import SCOOPER
+from scooper.core.utils.logger import get_logger
+from scooper.core.utils.paginate import paginate
 from scooper.sources import LogSource
 from scooper.sources.report import LoggingReport
-from scooper.utils.enum import paginate
-from scooper.utils.logger import get_logger
 
 _logger = get_logger()
 
 
 class Config(LogSource):
     def __init__(self, level: str) -> None:
-        super().__init__()
-        self._level = level
+        super().__init__(level)
         self._service = self.__class__.__name__
         self._client = client(self._service.lower())
 
     def _enumerate_config_aggregators(self) -> dict[str, dict]:
         _logger.info("Enumerating Configuration Aggregators...")
+
         config_aggregators = paginate(
             self._client,
             "describe_configuration_aggregators",
             "ConfigurationAggregators",
         )
-
         # Update aggregators with status information
         config_aggregators = {
             aggregator["ConfigurationAggregatorName"]: aggregator
             for aggregator in config_aggregators
         }
+
         for aggregator in config_aggregators:
             config_aggregators.update(
                 {
@@ -75,9 +76,9 @@ class Config(LogSource):
         config_recorder_status = self._client.describe_configuration_recorder_status()[
             "ConfigurationRecordersStatus"
         ]
-
         # Join dicts on common 'name' key
         config_recorders = {recorder["name"]: recorder for recorder in config_recorders}
+
         for status in config_recorder_status:
             config_recorders[status["name"]].update(status)
 
@@ -92,9 +93,9 @@ class Config(LogSource):
         delivery_channel_status = self._client.describe_delivery_channel_status()[
             "DeliveryChannelsStatus"
         ]
-
         # Join dicts on common 'name' key
         delivery_channels = {channel["name"]: channel for channel in delivery_channels}
+
         for status in delivery_channel_status:
             delivery_channels[status["name"]].update(status)
 
@@ -113,7 +114,7 @@ class Config(LogSource):
         config_aggregators, config_recorders, delivery_channels = self.enumerate()
 
         config_enabled = False
-        scooper_owned = []
+        owned_by_scooper = False
 
         for aggregator_name, aggregator in config_aggregators.items():
             if aggregator.get("LastUpdateStatus") == "SUCCEEDED":
@@ -121,19 +122,19 @@ class Config(LogSource):
                     "Config aggregator '%s' is already configured!", aggregator_name
                 )
                 config_enabled = True
-                scooper_owned.append("Scooper" in aggregator_name)
+                owned_by_scooper = SCOOPER in aggregator_name
 
         for recorder_name, recorder in config_recorders.items():
-            if recorder.get("recording"):
+            if "recording" in recorder:
                 _logger.info(
                     "Config recorder '%s' is already configured!", recorder_name
                 )
                 config_enabled = True
-                scooper_owned.append("Scooper" in recorder_name)
+                owned_by_scooper = SCOOPER in recorder_name
 
         return LoggingReport(
             service=self._service,
-            enabled=config_enabled,
+            logging_enabled=config_enabled,
             details={
                 "level": self.level,
                 "configuration": {
@@ -142,5 +143,5 @@ class Config(LogSource):
                     "delivery_channels": delivery_channels,
                 },
             },
-            owned_by_scooper=any(scooper_owned),
+            owned_by_scooper=owned_by_scooper,
         )

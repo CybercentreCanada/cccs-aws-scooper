@@ -28,6 +28,7 @@ import aws_cdk.aws_iam as iam
 import aws_cdk.aws_s3 as s3
 from constructs import Construct
 
+from scooper.core.constants import ORG
 from scooper.sources.report import LoggingReport
 
 
@@ -36,21 +37,23 @@ class CloudTrail(cdk.NestedStack):
         self,
         scope: Construct,
         construct_id: str,
-        summary: LoggingReport,
-        bucket: s3.IBucket,
-        **kwargs,
+        logging_report: LoggingReport,
+        scooper_bucket: s3.Bucket,
+        **_,
     ) -> None:
         super().__init__(scope, construct_id)
 
-        trail_name = "{}Trail-Scooper".format(summary.details["level"].capitalize())
+        trail_name = "{}Trail-Scooper".format(
+            logging_report.details["level"].capitalize()
+        )
         cloudtrail_service_principal = iam.ServicePrincipal("cloudtrail.amazonaws.com")
 
-        bucket.add_to_resource_policy(
+        scooper_bucket.add_to_resource_policy(
             iam.PolicyStatement(
                 sid="CloudTrailAclCheck",
                 principals=[cloudtrail_service_principal],
                 actions=["s3:GetBucketAcl"],
-                resources=[bucket.bucket_arn],
+                resources=[scooper_bucket.bucket_arn],
                 conditions={
                     "StringEquals": {
                         "aws:SourceArn": f"arn:aws:cloudtrail:{self.region}:{self.account}:trail/{trail_name}"
@@ -58,12 +61,12 @@ class CloudTrail(cdk.NestedStack):
                 },
             )
         )
-        bucket.add_to_resource_policy(
+        scooper_bucket.add_to_resource_policy(
             iam.PolicyStatement(
                 sid="CloudTrailWrite",
                 principals=[cloudtrail_service_principal],
                 actions=["s3:PutObject"],
-                resources=[bucket.arn_for_objects("*")],
+                resources=[scooper_bucket.arn_for_objects("*")],
                 conditions={
                     "StringEquals": {
                         "s3:x-amz-acl": "bucket-owner-full-control",
@@ -72,14 +75,16 @@ class CloudTrail(cdk.NestedStack):
                 },
             )
         )
-        bucket.encryption_key.grant_encrypt_decrypt(cloudtrail_service_principal)
+        scooper_bucket.encryption_key.grant_encrypt_decrypt(
+            cloudtrail_service_principal
+        )
 
         self.cloudtrail = cloudtrail.Trail(
             self,
             trail_name,
             trail_name=trail_name,
-            bucket=bucket,
-            s3_key_prefix=summary.service,
-            encryption_key=bucket.encryption_key,
-            is_organization_trail=summary.details["level"] == "org",
+            bucket=scooper_bucket,
+            s3_key_prefix=logging_report.service,
+            encryption_key=scooper_bucket.encryption_key,
+            is_organization_trail=logging_report.details["level"] == ORG,
         )

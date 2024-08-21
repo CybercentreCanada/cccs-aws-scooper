@@ -22,22 +22,25 @@ Notwithstanding the foregoing, third party components included herein are subjec
 noted in the files associated with those components.
 """
 
-from abc import ABC, abstractmethod, abstractproperty
+from abc import ABC, abstractmethod
+from typing import Any
 
 from .report import LoggingReport
 
 
 class ILogSource(ABC):
-    @abstractproperty
+    @property
+    @abstractmethod
     def level(self) -> str:
         pass
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def report(self) -> LoggingReport:
         pass
 
     @abstractmethod
-    def enumerate(self):
+    def enumerate(self) -> Any:
         pass
 
     @abstractmethod
@@ -46,9 +49,8 @@ class ILogSource(ABC):
 
 
 class LogSource(ILogSource):
-    def __init__(self) -> None:
-        super().__init__()
-        self._level = None
+    def __init__(self, level: str) -> None:
+        self._level = level
         self._report = None
 
     @property

@@ -22,5 +22,10 @@ Notwithstanding the foregoing, third party components included herein are subjec
 noted in the files associated with those components.
 """
 
+from .lambda_layer import LambdaLayer
+
+LambdaLayer().import_layer(
+    "arn:aws:lambda:ca-central-1:519133912246:layer:CBSCommonLayer:9", "cbs_common"
+)
+from .iam_metadata import *  # NOQA
 from .organization_metadata import *  # NOQA
-from .resources_metadata import *  # NOQA

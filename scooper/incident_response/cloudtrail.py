@@ -28,13 +28,16 @@ from datetime import datetime
 from json import loads
 
 from boto3 import Session, client
+from botocore.config import Config
 
-from scooper.utils.enum import paginate
-from scooper.utils.io import write_dict_to_s3
-from scooper.utils.logger import get_logger
+from scooper.core.utils.io import write_dict_to_s3
+from scooper.core.utils.logger import get_logger
+from scooper.core.utils.paginate import paginate
+from scooper.core.utils.sts import STS_CLIENT
 
 NUM_WORKERS = 2  # We get throttled beyond this :(
 
+config = Config(retries={"mode": "adaptive", "max_attempts": 16})
 _logger = get_logger()
 
 
@@ -46,7 +49,7 @@ class TimeRange:
 
 def get_cloudtrail_events(start_time: datetime, end_time: datetime) -> list[dict]:
     """Get CloudTrail events between `start_time` and `end_time` in current account and region."""
-    cloudtrail_client = client("cloudtrail")
+    cloudtrail_client = client("cloudtrail", config=config)
 
     time_interval = (end_time - start_time) / NUM_WORKERS
     periods: list[TimeRange] = []
@@ -108,10 +111,8 @@ def write_cloudtrail_scoop_to_s3(
 ) -> None:
     """Write historical CloudTrail data to given `bucket_name`."""
     session = Session()
-    s3_client = session.client("s3")
-    sts_client = session.client("sts")
-    account_id = sts_client.get_caller_identity()["Account"]
     region = session.region_name
+    account_id = STS_CLIENT.get_caller_identity()["Account"]
 
     _logger.info(
         f"Getting CloudTrail data between '{start_time}' and '{end_time}' in account '{account_id}' and region '{region}'..."
@@ -125,5 +126,4 @@ def write_cloudtrail_scoop_to_s3(
             obj=partition,
             bucket_name=bucket_name,
             object_key=f"{cloudtrail_prefix}/{datetime_.strftime('%Y/%m/%d')}/CloudTrail_{datetime_.isoformat()}.json",
-            s3_client=s3_client,
         )

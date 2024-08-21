@@ -27,10 +27,11 @@ from unittest.mock import patch
 import botocore
 from moto import mock_config  # isolating each test case
 
+from scooper.core.constants import ACCOUNT
+
 
 def put_attributes(config_client, agg):
     if config_client.describe_configuration_recorders()["ConfigurationRecorders"]:
-        print("Existing Configuration Recorder!")
         assert False
     config_client.put_configuration_recorder(
         ConfigurationRecorder={
@@ -132,10 +133,9 @@ def test_enumerate(config_client, sts_client):
     config_client.start_configuration_recorder(
         ConfigurationRecorderName="testrecorderconfigtest"
     )
-    rep = Config("account").report
+    report = Config(ACCOUNT).report
 
-    print(len(rep.details["configuration"]))
-    check = rep.details["configuration"]
+    check = report.details["configuration"]
     assert (
         check["config_aggregators"]
         and check["config_recorders"]
@@ -151,11 +151,10 @@ def test_delete_aggregator(config_client, sts_client):
     put_attributes(config_client, "n")
     agg = config_client.describe_configuration_aggregators()
     if agg["ConfigurationAggregators"]:
-        print("Aggregator exists!")
         assert False
 
-    rep = Config("account").report
-    assert not rep.details["configuration"]["config_aggregators"]
+    report = Config(ACCOUNT).report
+    assert not report.details["configuration"]["config_aggregators"]
 
 
 @patch("botocore.client.BaseClient._make_api_call", new=mock_make_api_call)
@@ -167,6 +166,6 @@ def test_delete_recorder(config_client, sts_client):
     config_client.delete_configuration_recorder(
         ConfigurationRecorderName="testrecorderconfigtest"
     )
-    rep = Config("account").report
+    report = Config(ACCOUNT).report
 
-    assert not rep.details["configuration"]["config_recorders"]
+    assert not report.details["configuration"]["config_recorders"]

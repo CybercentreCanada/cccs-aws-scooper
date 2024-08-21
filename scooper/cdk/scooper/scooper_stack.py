@@ -33,10 +33,11 @@ import aws_cdk.aws_logs as logs
 import aws_cdk.aws_s3 as s3
 from constructs import Construct
 
-from scooper.config import ScooperConfig
+from scooper.core.cli.callbacks import S3LifecycleRule
+from scooper.core.config import ScooperConfig
+from scooper.core.constants import ORG
+from scooper.core.utils.logger import get_logger
 from scooper.sources.report import LoggingReport
-from scooper.utils.cli.callbacks import S3LifecycleRule
-from scooper.utils.logger import get_logger
 
 _logger = get_logger()
 
@@ -54,6 +55,7 @@ class Scooper(cdk.Stack):
         super().__init__(scope, construct_id, **kwargs)
 
         self.scooper_config = scooper_config
+        self.is_org_level = self.scooper_config.level == ORG
         self.reports = logging_reports
         self.lifecycle_rules = lifecycle_rules
 
@@ -66,39 +68,43 @@ class Scooper(cdk.Stack):
         self._scooper_firehose = None
         self._scooper_cross_account = None
 
-        for logging in logging_reports:
-            if self.check_logging(logging):
-                if logging.enabled:
-                    _logger.info("%s is enabled!", logging.service)
+        for logging_report in logging_reports:
+            if self.check_logging(logging_report):
+                if logging_report.logging_enabled:
+                    _logger.info(
+                        "%s is enabled and owned by Scooper!", logging_report.service
+                    )
                 else:
-                    _logger.info("%s is disabled!", logging.service)
-                    _logger.info("Configuring %s logging...", logging.service)
+                    _logger.info("%s is disabled!", logging_report.service)
+                    _logger.info("Configuring %s logging...", logging_report.service)
                 try:
                     module = import_module(
-                        f"scooper.cdk.stacks.{logging.service.lower()}"
+                        f"scooper.cdk.stacks.{logging_report.service.lower()}"
                     )
-                    stack = getattr(module, logging.service)
+                    stack = getattr(module, logging_report.service)
                     stack(
                         self,
-                        f"{logging.service}Stack",
-                        summary=logging,
-                        bucket=self.scooper_bucket,
+                        f"{logging_report.service}Stack",
+                        logging_report=logging_report,
+                        scooper_bucket=self.scooper_bucket,
                         scooper_config=self.scooper_config,
                     )
                 except ModuleNotFoundError:
-                    _logger.warning("CDK stack for '%s' not found!", logging.service)
-            elif logging.enabled and not logging.owned_by_scooper:
-                _logger.info("%s is enabled!", logging.service)
+                    _logger.warning(
+                        "CDK stack for '%s' not found!", logging_report.service
+                    )
+            elif logging_report.logging_enabled and not logging_report.owned_by_scooper:
+                _logger.info("%s is enabled!", logging_report.service)
 
         cdk.CfnOutput(self, "BucketName", value=self.scooper_bucket.bucket_name)
 
-    def check_logging(self, logging: LoggingReport) -> bool:
-        return (logging.enabled and logging.owned_by_scooper) or (
-            not logging.enabled and not logging.owned_by_scooper
+    def check_logging(self, logging_report: LoggingReport) -> bool:
+        return (logging_report.logging_enabled and logging_report.owned_by_scooper) or (
+            not logging_report.logging_enabled and not logging_report.owned_by_scooper
         )
 
     @property
-    def scooper_key(self) -> kms.IKey:
+    def scooper_key(self) -> kms.Key:
         if self._scooper_key is None:
             self._scooper_key = kms.Key(
                 self,
@@ -106,7 +112,8 @@ class Scooper(cdk.Stack):
                 description="Key used by Scooper for SSE of log objects",
                 enable_key_rotation=True,
             )
-            if self.scooper_config.global_config.level == "org":
+
+            if self.is_org_level and self.scooper_config.experimental_features:
                 self._scooper_key.add_to_resource_policy(
                     iam.PolicyStatement(
                         principals=[self.firehose_role],
@@ -115,10 +122,11 @@ class Scooper(cdk.Stack):
                     )
                 )
                 self._scooper_key.grant_encrypt_decrypt(self.firehose_role)
+
         return self._scooper_key
 
     @property
-    def scooper_bucket(self) -> s3.IBucket:
+    def scooper_bucket(self) -> s3.Bucket:
         if self._scooper_bucket is None:
             self._scooper_bucket = s3.Bucket(
                 self,
@@ -174,7 +182,8 @@ class Scooper(cdk.Stack):
                     )
                 )
                 self.scooper_key.grant_decrypt(self.databricks_reader.role)
-            if self.scooper_config.global_config.level == "org":
+
+            if self.is_org_level and self.scooper_config.experimental_features:
                 self._scooper_bucket.add_to_resource_policy(
                     iam.PolicyStatement(
                         principals=[self.firehose_role],
@@ -193,6 +202,7 @@ class Scooper(cdk.Stack):
                     )
                 )
                 self._scooper_bucket.grant_read_write(self.firehose_role)
+
         return self._scooper_bucket
 
     @property
@@ -224,11 +234,16 @@ class Scooper(cdk.Stack):
             self._databricks_reader = DatabricksReader(
                 user=self._databricks_reader_user, role=self._databricks_reader_role
             )
+
         return self._databricks_reader
 
     @property
-    def cwl_role(self) -> iam.IRole:
-        if self._cwl_role is None and self.scooper_config.global_config.level == "org":
+    def cwl_role(self) -> iam.Role:
+        if (
+            self._cwl_role is None
+            and self.is_org_level
+            and self.scooper_config.experimental_features
+        ):
             self._cwl_role = iam.Role(
                 self,
                 "CWLRole",
@@ -236,9 +251,11 @@ class Scooper(cdk.Stack):
                 assumed_by=iam.ServicePrincipal("logs.amazonaws.com"),
             )
             account_ids = []
+
             for report in self.reports:
                 if report.service == "VPC":
                     account_ids = report.details["flow_logs"].keys()
+
             self._cwl_role.assume_role_policy.add_statements(
                 iam.PolicyStatement(
                     principals=[iam.ServicePrincipal("logs.amazonaws.com")],
@@ -262,36 +279,41 @@ class Scooper(cdk.Stack):
                     actions=["sts:AssumeRole"],
                 )
             )
+
         return self._cwl_role
 
     @property
-    def scooper_stream(self) -> kinesis.IStream:
+    def scooper_stream(self) -> kinesis.Stream:
         if (
             self._scooper_stream is None
-            and self.scooper_config.global_config.level == "org"
+            and self.is_org_level
+            and self.scooper_config.experimental_features
         ):
             self._scooper_stream = kinesis.Stream(
                 self, "ScooperStream", stream_name="ScooperStream"
             )
             self.stream_grant = self._scooper_stream.grant_read_write(self.cwl_role)
+
         return self._scooper_stream
 
     @property
-    def firehose_role(self) -> iam.IRole:
-        if self._firehose_role is None:
+    def firehose_role(self) -> iam.Role:
+        if self._firehose_role is None and self.scooper_config.experimental_features:
             self._firehose_role = iam.Role(
                 self,
                 "FirehoseRole",
                 role_name="FirehoseRole",
                 assumed_by=iam.ServicePrincipal("firehose.amazonaws.com"),
             )
+
         return self._firehose_role
 
     @property
     def scooper_firehose(self) -> firehose.CfnDeliveryStream:
         if (
             self._scooper_firehose is None
-            and self.scooper_config.global_config.level == "org"
+            and self.is_org_level
+            and self.scooper_config.experimental_features
         ):
             self._scooper_firehose = firehose.CfnDeliveryStream(
                 self,
@@ -310,13 +332,15 @@ class Scooper(cdk.Stack):
             )
             self._scooper_firehose.node.add_dependency(self.cwl_role)
             self._scooper_firehose.node.add_dependency(self.firehose_role)
+
         return self._scooper_firehose
 
     @property
     def scooper_cross_account(self) -> logs.CrossAccountDestination:
         if (
             self._scooper_cross_account is None
-            and self.scooper_config.global_config.level == "org"
+            and self.is_org_level
+            and self.scooper_config.experimental_features
         ):
             self._scooper_cross_account = logs.CrossAccountDestination(
                 self,
@@ -332,13 +356,12 @@ class Scooper(cdk.Stack):
                     resources=["*"],
                     conditions={
                         "StringEquals": {
-                            "aws:PrincipalOrgID": [
-                                self.scooper_config.global_config.org_id
-                            ]
+                            "aws:PrincipalOrgID": [self.scooper_config.org_id]
                         }
                     },
                 )
             )
             self._scooper_cross_account.node.add_dependency(self.scooper_stream)
             self._scooper_cross_account.node.add_dependency(self.stream_grant)
+
         return self._scooper_cross_account

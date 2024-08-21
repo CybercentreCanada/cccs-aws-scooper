@@ -84,7 +84,7 @@ Scooper can be run using any AWS principal that has been assigned an [Administra
 
 After pulling the repository to your environment and installing the required dependencies, users must have valid credentials configured to their AWS account of choice.
 
-Run `python -m scooper.main --help` to see all CLI options.
+Run `python -m scooper --help` to see all CLI options.
 
 #### CLI Options
 
@@ -106,7 +106,7 @@ Scooper can be run with the following options:
     - `x` represents the number of days before an object is transitioned to a given `STORAGE_CLASS`.
     - `y` represents the number of days before an object is expired/deleted (must be greater than x).
   - Omitting lifecycle rules on subsequent deployments with `configure-logging` will remove the lifecycle rules in place on the created S3 bucket.
-  - Supported storage classes can be found using the `python -m scooper.main configure-logging --help` command.
+  - Supported storage classes can be found using the `python -m scooper configure-logging --help` command.
   - Omitting the `--lifecycle-rules` option results in using the default storage class of `STANDARD` and no lifecycle policy will be in place on the created S3 bucket.
   - Examples:
     - `--lifecycle-rules "GLACIER(1d),EXPIRY(12d)"`
@@ -118,10 +118,6 @@ Scooper can be run with the following options:
     - `--lifecycle-rules "INTELLIGENT_TIERING(1d),DEEP_ARCHIVE(10d),EXPIRY(12d)"`
      - Objects will move to INTELLIGENT_TIERING after 1 day, DEEP_ARCHIVE after 10 days, and expire after 12 days.
   - Unsupported lifecycle transitions can be found [here](https://docs.aws.amazon.com/AmazonS3/latest/userguide/lifecycle-transition-general-considerations.html).
-- `--region TEXT`
-  - Which AWS region to enumerate.
-  - Enter your desired region.
-  - The default region is set to `ca-central-1`.
 - `--role-name TEXT`
   - Name of role with organizational account access.
   - If Organization level enumeration is chosen, the name of the role with organizational account access must be specified.
@@ -250,7 +246,7 @@ Scooper peut être exécutée par n'importe quel principal AWS qui a été attri
 
 Après avoir récupéré le dépôt dans votre environnement et installé les dépendances requises, les usagers doivent disposer d'informations d'identification valides configurées sur le compte AWS de leur choix.
 
-Lancez `python -m scooper.main --help` pour voir toutes les options CLI.
+Lancez `python -m scooper --help` pour voir toutes les options CLI.
 
 #### Options CLI
 
@@ -283,10 +279,6 @@ Scooper peut être exécuté avec les options suivantes :
     - `--lifecycle-rules "INTELLIGENT_TIERING(1d),DEEP_ARCHIVE(10d),EXPIRY(12d)"`
      - Les objets seront déplacés vers INTELLIGENT_TIERING après 1 jour, vers DEEP_ARCHIVE après 10 jours et expireront après 12 jours.
   - Les transitions du cycle de vie non prises en charge peuvent être trouvées [ici](https://docs.aws.amazon.com/AmazonS3/latest/userguide/lifecycle-transition-general-considerations.html).
-- `--region TEXT`
-  - Quelle région AWS s'énumérer.
-  - Indiquez la région souhaitée.
-  - La région par défaut est `ca-central-1`.
 - `--role-name TEXT`
   - Nom du rôle avec accès au compte d'organisation.
   - Si l'énumération au niveau de l'organisation est choisie, le nom du rôle avec accès au compte de l'organisation doit être spécifié.

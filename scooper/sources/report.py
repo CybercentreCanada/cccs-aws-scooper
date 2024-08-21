@@ -23,12 +23,13 @@ noted in the files associated with those components.
 """
 
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
 class LoggingReport:
     service: str
-    enabled: bool
-    details: dict[str, str]
+    logging_enabled: bool
+    details: dict[str, Any]
 
     owned_by_scooper: bool = False
