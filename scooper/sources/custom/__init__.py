@@ -24,7 +24,7 @@ noted in the files associated with those components.
 
 from .lambda_layer import LambdaLayer
 
-LambdaLayer().import_layer(
+LambdaLayer.import_layer(
     "arn:aws:lambda:ca-central-1:519133912246:layer:CBSCommonLayer:9", "cbs_common"
 )
 from .iam_metadata import *  # NOQA

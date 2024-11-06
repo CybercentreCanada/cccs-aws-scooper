@@ -28,44 +28,48 @@ from pathlib import Path
 from urllib.request import urlopen
 from zipfile import ZipFile
 
-import boto3
+from boto3 import client
 
 
 class LambdaLayer:
     path = Path("/tmp/lambda_layers")
     full_path = path / Path("python")
 
-    def _exists(self, layer_name: str) -> bool:
+    @classmethod
+    def _exists(cls, layer_name: str) -> bool:
         """Check if Lambda Layer has already been downloaded."""
-        return Path(LambdaLayer.full_path / layer_name).exists()
+        return (cls.full_path / layer_name).exists()
 
-    def _download(self, arn: str, module_name: str) -> None:
+    @classmethod
+    def _download(cls, arn: str, module_name: str) -> None:
         """Download and extract Lambda Layer."""
         # Get information about Lambda Layer
-        client = boto3.client("lambda")
-        response = client.get_layer_version_by_arn(Arn=arn)
+        lambda_client = client("lambda")
+        response = lambda_client.get_layer_version_by_arn(Arn=arn)
         url = response["Content"]["Location"]
         # Download Lambda Layer and extract zip to /tmp
         with urlopen(url) as zipresp:
             with ZipFile(BytesIO(zipresp.read())) as zfile:
-                self._validate(zfile, module_name)
-                zfile.extractall(LambdaLayer.path)
+                cls._validate(zfile, module_name)
+                zfile.extractall(cls.path)
 
-    def _validate(self, zip_file: ZipFile, module_name: str) -> None:
+    @classmethod
+    def _validate(cls, zip_file: ZipFile, module_name: str) -> None:
         unexpected_module_items = [
             path
             for path in zip_file.namelist()
-            if not path.startswith("python/%s" % module_name)
+            if not path.startswith(f"python/{module_name}")
         ]
 
         if unexpected_module_items:
             raise ValueError(
-                "Unexpected module paths found when unzipping module %s" % module_name
+                f"Unexpected module paths found when unzipping module '{module_name}'"
             )
 
-    def import_layer(self, layer_version_arn: str, module_name: str) -> None:
+    @classmethod
+    def import_layer(cls, layer_version_arn: str, module_name: str) -> None:
         """Add Lambda Layer to PYTHONPATH."""
-        if not self._exists(module_name):
-            self._download(layer_version_arn, module_name)
+        if not cls._exists(module_name):
+            cls._download(layer_version_arn, module_name)
 
-        sys.path.append(str(LambdaLayer.full_path))
+        sys.path.append(str(cls.full_path))

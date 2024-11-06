@@ -28,6 +28,7 @@ import aws_cdk.aws_iam as iam
 import aws_cdk.aws_s3 as s3
 from constructs import Construct
 
+from scooper.core.config import ScooperConfig
 from scooper.core.constants import ORG
 from scooper.sources.report import LoggingReport
 
@@ -39,13 +40,12 @@ class CloudTrail(cdk.NestedStack):
         construct_id: str,
         logging_report: LoggingReport,
         scooper_bucket: s3.Bucket,
+        scooper_config: ScooperConfig,
         **_,
     ) -> None:
         super().__init__(scope, construct_id)
 
-        trail_name = "{}Trail-Scooper".format(
-            logging_report.details["level"].capitalize()
-        )
+        trail_name = "{}Trail-Scooper".format(scooper_config.level.capitalize())
         cloudtrail_service_principal = iam.ServicePrincipal("cloudtrail.amazonaws.com")
 
         scooper_bucket.add_to_resource_policy(
@@ -86,5 +86,5 @@ class CloudTrail(cdk.NestedStack):
             bucket=scooper_bucket,
             s3_key_prefix=logging_report.service,
             encryption_key=scooper_bucket.encryption_key,
-            is_organization_trail=logging_report.details["level"] == ORG,
+            is_organization_trail=scooper_config.level == ORG,
         )

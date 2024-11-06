@@ -1,4 +1,4 @@
 -r scooper/requirements.txt  # Install Scooper-related dependencies so we can lint the code
 moto~=4.2
-pre-commit~=3.8
+pre-commit~=4.0
 pytest~=8.3

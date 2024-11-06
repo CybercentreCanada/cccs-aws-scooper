@@ -22,7 +22,7 @@ Notwithstanding the foregoing, third party components included herein are subjec
 noted in the files associated with those components.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal, Optional
 
 from botocore.exceptions import ClientError
@@ -38,6 +38,9 @@ class ScooperConfig:
     org_role_name: Optional[str] = None
     databricks_reader: bool = False
     experimental_features: bool = False
+
+    root_id: str = field(init=False)
+    org_id: str = field(init=False)
 
     def __post_init__(self) -> None:
         if self.level == ORG:

@@ -44,7 +44,7 @@ from scooper.sources import custom, native
 from scooper.sources.custom.lambda_layer import LambdaLayer
 from scooper.sources.report import LoggingReport
 
-LambdaLayer().import_layer(
+LambdaLayer.import_layer(
     "arn:aws:lambda:ca-central-1:519133912246:layer:CBSCommonLayer:9", "cbs_common"
 )
 from cbs_common.aws.sso_metadata import SSOMetadata
@@ -93,7 +93,7 @@ def main(
     for title, report in reports.items():
         write_dict_to_file(
             asdict(report) if is_dataclass(report) else report,
-            Path(f"scooper/out/{title}.json"),
+            Path(f"out/{title}.json"),
         )
 
     if configure_logging or destroy:
@@ -157,7 +157,7 @@ def _configure_logging(
         )
         return
 
-    stack_outputs = Path("scooper/out/stack_outputs.json")
+    stack_outputs = Path("out/stack_outputs.json")
     _logger.info("Deploying %s stack...", stack_name)
     run(
         [

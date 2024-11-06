@@ -16,6 +16,5 @@ pyrightconfig.json
 /dist/
 /.pids
 
-
-# Scooper
-scooper/out/*
+# Scooper output
+out/*
