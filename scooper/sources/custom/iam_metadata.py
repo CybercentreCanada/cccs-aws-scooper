@@ -25,7 +25,6 @@ noted in the files associated with those components.
 from string import Template
 
 from boto3 import Session
-from botocore.config import Config
 from botocore.exceptions import ClientError
 from cbs_common.aws.boto_types import DataRequest
 from cbs_common.aws.iam_metadata import IAMMetadata as CBSCommonIAMMetadata
@@ -34,7 +33,6 @@ from cbs_common.aws.utilities import BotoHelper, assume_role
 from scooper.core.constants import ORG
 from scooper.core.utils.logger import get_logger
 
-config = Config(retries={"mode": "adaptive", "max_attempts": 16})
 _logger = get_logger()
 
 
@@ -60,11 +58,11 @@ class IAMMetadata(CBSCommonIAMMetadata):
                     try:
                         self._clients[account_id] = assume_role(
                             role_arn=role_arn, sts_client=sts_client
-                        ).client("iam", config=config)
+                        ).client("iam")
                     except ClientError as e:
                         if e.response["Error"]["Code"] == "AccessDenied":
                             _logger.exception("Failed to assume '%s'", role_arn)
                         else:
                             raise
 
-        self._clients[current_account_id] = session.client("iam", config=config)
+        self._clients[current_account_id] = session.client("iam")

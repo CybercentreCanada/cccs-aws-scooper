@@ -45,8 +45,9 @@ from scooper.sources.custom.lambda_layer import LambdaLayer
 from scooper.sources.report import LoggingReport
 
 LambdaLayer.import_layer(
-    "arn:aws:lambda:ca-central-1:519133912246:layer:CBSCommonLayer:9", "cbs_common"
+    "arn:aws:lambda:ca-central-1:519133912246:layer:CBSCommonLayer:21", "cbs_common"
 )
+from cbs_common.aws.organization_metadata import OrganizationMetadata
 from cbs_common.aws.sso_metadata import SSOMetadata
 
 _logger = get_logger()
@@ -87,7 +88,7 @@ def main(
     }
 
     if level == ORG:
-        reports["organization_metadata"] = custom.OrganizationMetadata().get_report()
+        reports["organization_metadata"] = OrganizationMetadata().get_report()
         reports["sso_metadata"] = SSOMetadata().get_report()
 
     for title, report in reports.items():

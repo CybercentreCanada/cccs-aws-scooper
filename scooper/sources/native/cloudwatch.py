@@ -22,6 +22,8 @@ Notwithstanding the foregoing, third party components included herein are subjec
 noted in the files associated with those components.
 """
 
+from typing import Optional
+
 from boto3 import client
 from botocore.client import BaseClient
 
@@ -44,7 +46,7 @@ class CloudWatch(LogSource):
         self._service = self.__class__.__name__
         self._client = client("logs")
 
-    def _get_log_groups(self, logs_client: BaseClient = None) -> list[dict]:
+    def _get_log_groups(self, logs_client: Optional[BaseClient] = None) -> list[dict]:
         if logs_client is None:
             # For account-level use
             _client = self._client
