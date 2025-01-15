@@ -158,7 +158,7 @@ class Config(cdk.NestedStack):
             "DeliveryChannel",
             name="ScooperConfigDeliveryChannel",
             s3_bucket_name=scooper_bucket.bucket_name,
-            s3_key_prefix="Config",
+            s3_key_prefix=logging_report.service,
             s3_kms_key_arn=scooper_bucket.encryption_key.key_arn,
             config_snapshot_delivery_properties=config.CfnDeliveryChannel.ConfigSnapshotDeliveryPropertiesProperty(
                 delivery_frequency="One_Hour"

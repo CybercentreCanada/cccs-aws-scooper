@@ -22,8 +22,18 @@ Notwithstanding the foregoing, third party components included herein are subjec
 noted in the files associated with those components.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from sys import modules
 from typing import Any
+
+if "pytest" in modules:
+
+    def utc_now():
+        return datetime.now(tz=timezone.utc)
+
+else:
+    from cbs_common.datetimes import utc_now
 
 
 @dataclass
@@ -32,4 +42,5 @@ class LoggingReport:
     logging_enabled: bool
     details: dict[str, Any]
 
-    owned_by_scooper: bool = False
+    event_time: datetime = field(default_factory=utc_now)
+    owned_by_scooper: bool = field(default=False)

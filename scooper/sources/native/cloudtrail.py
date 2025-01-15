@@ -52,29 +52,38 @@ class CloudTrail(LogSource):
         return [self._client.get_trail(Name=trail["Name"])["Trail"] for trail in trails]
 
     def get_report(self) -> LoggingReport:
-        for trail in self.enumerate():
+        logging_enabled = False
+
+        for trail in (trails := self.enumerate()):
             if (
                 (trail["IsOrganizationTrail"] and self.level == ORG)
                 or (not trail["IsOrganizationTrail"] and self.level == ACCOUNT)
                 and trail["IncludeGlobalServiceEvents"]
                 and trail["IsMultiRegionTrail"]
             ):
-                if not trail["HasCustomEventSelectors"]:
+                if trail["HasCustomEventSelectors"]:
+                    event_selectors = self._client.get_event_selectors(
+                        TrailName=trail["Name"]
+                    )
+                    del event_selectors["TrailARN"]
+                    del event_selectors["ResponseMetadata"]
+                    trail.update(event_selectors)
+                else:
                     _logger.info(
                         "%s trail '%s' is already configured!",
                         self.level.capitalize(),
                         trail["Name"],
                     )
-                    return LoggingReport(
-                        service=self._service,
-                        logging_enabled=True,
-                        details={
-                            "level": self.level,
-                            "configuration": trail,
-                        },
-                        owned_by_scooper=SCOOPER in trail["Name"],
-                    )
+                    logging_enabled = True
 
         return LoggingReport(
-            service=self._service, logging_enabled=False, details={"level": self.level}
+            service=self._service,
+            logging_enabled=logging_enabled,
+            details={
+                "level": self.level,
+                "trails": trails,
+            },
+            owned_by_scooper=any(
+                SCOOPER.lower() in trail["Name"].lower() for trail in trails
+            ),
         )

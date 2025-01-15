@@ -122,7 +122,7 @@ class Config(LogSource):
                     "Config aggregator '%s' is already configured!", aggregator_name
                 )
                 config_enabled = True
-                owned_by_scooper = SCOOPER in aggregator_name
+                owned_by_scooper = SCOOPER.lower() in aggregator_name.lower()
 
         for recorder_name, recorder in config_recorders.items():
             if "recording" in recorder:
@@ -130,7 +130,7 @@ class Config(LogSource):
                     "Config recorder '%s' is already configured!", recorder_name
                 )
                 config_enabled = True
-                owned_by_scooper = SCOOPER in recorder_name
+                owned_by_scooper = SCOOPER.lower() in recorder_name.lower()
 
         return LoggingReport(
             service=self._service,

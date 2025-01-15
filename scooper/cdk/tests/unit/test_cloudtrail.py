@@ -85,10 +85,10 @@ def test_enumerate(cloudtrail_client, s3_client, sts_client):
 
     put_trails(cloudtrail_client, s3_client)
     report = CloudTrail(ACCOUNT).report
-    confg = report.details["configuration"]
+    trail = report.details["trails"][0]
     assert (
         report.logging_enabled
-        and confg["S3BucketName"] == "test-bucket"
+        and trail["S3BucketName"] == "test-bucket"
         and not report.owned_by_scooper
     )
 

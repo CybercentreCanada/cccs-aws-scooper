@@ -178,7 +178,17 @@ def _configure_logging(
         bucket_name = outputs[stack_name]["BucketName"]
     else:
         _logger.critical("%s deploy failed!", stack_name)
-        exit(1)
+        raise SystemExit
+
+    object_key_prefixes = [
+        report.service
+        for report in reports.values()
+        if isinstance(report, LoggingReport) and Scooper.check_logging(report)
+    ]
+    write_dict_to_file(
+        obj={"bucket_name": bucket_name, "object_key_prefixes": object_key_prefixes},
+        path=Path("out/logging.json"),
+    )
 
     if scooper_config.level == ORG:
         _logger.info("Publishing %s metadata...", stack_name)

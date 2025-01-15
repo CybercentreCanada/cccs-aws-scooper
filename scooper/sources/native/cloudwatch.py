@@ -89,6 +89,6 @@ class CloudWatch(LogSource):
             logging_enabled=len(log_groups) > 0,
             details={
                 "level": self.level,
-                "configuration": log_groups,
+                "log_groups": log_groups,
             },
         )

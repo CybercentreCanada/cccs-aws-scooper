@@ -81,7 +81,7 @@ class Scooper(cdk.Stack):
                     module = import_module(
                         f"scooper.cdk.stacks.{logging_report.service.lower()}"
                     )
-                    stack = getattr(module, logging_report.service)
+                    stack: cdk.NestedStack = getattr(module, logging_report.service)
                     stack(
                         self,
                         f"{logging_report.service}Stack",
@@ -98,7 +98,9 @@ class Scooper(cdk.Stack):
 
         cdk.CfnOutput(self, "BucketName", value=self.scooper_bucket.bucket_name)
 
-    def check_logging(self, logging_report: LoggingReport) -> bool:
+    @staticmethod
+    def check_logging(logging_report: LoggingReport) -> bool:
+        """Check `if (logging is enabled and owned by Scooper) or (logging is disabled and not owned by Scooper)`."""
         return (logging_report.logging_enabled and logging_report.owned_by_scooper) or (
             not logging_report.logging_enabled and not logging_report.owned_by_scooper
         )
