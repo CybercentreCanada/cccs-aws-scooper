@@ -37,15 +37,15 @@ from scooper.core.cli import options
 from scooper.core.cli.callbacks import S3LifecycleRule
 from scooper.core.config import ScooperConfig
 from scooper.core.constants import ORG, SCOOPER
+from scooper.core.lambda_layer import LambdaLayer
 from scooper.core.utils.io import date_range_input, write_dict_to_file, write_dict_to_s3
 from scooper.core.utils.logger import get_logger
 from scooper.incident_response.cloudtrail import write_cloudtrail_scoop_to_s3
 from scooper.sources import custom, native
-from scooper.sources.custom.lambda_layer import LambdaLayer
 from scooper.sources.report import LoggingReport
 
 LambdaLayer.import_layer(
-    "arn:aws:lambda:ca-central-1:519133912246:layer:CBSCommonLayer:21", "cbs_common"
+    "arn:aws:lambda:ca-central-1:495075646178:layer:CBSCommonLayer:13", "cbs_common"
 )
 from cbs_common.aws.organization_metadata import OrganizationMetadata
 from cbs_common.aws.sso_metadata import SSOMetadata
