@@ -149,7 +149,7 @@ class Config(cdk.NestedStack):
             name="ScooperConfigRecorder",
             role_arn=recorder_role.role_arn,
             recording_group=config.CfnConfigurationRecorder.RecordingGroupProperty(
-                all_supported=True
+                all_supported=True, include_global_resource_types=True
             ),
         )
 
