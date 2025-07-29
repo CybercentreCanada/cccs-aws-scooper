@@ -131,6 +131,25 @@ class Config(LogSource):
                 )
                 config_enabled = True
                 owned_by_scooper = SCOOPER.lower() in recorder_name.lower()
+                if (
+                    owned_by_scooper
+                    and recorder["recordingGroup"]["includeGlobalResourceTypes"]
+                    == False
+                ):
+                    _logger.info(
+                        "Enabling global resource types on recorder: '%s'...",
+                        recorder_name,
+                    )
+                    self._client.put_configuration_recorder(
+                        ConfigurationRecorder={
+                            "name": recorder_name,
+                            "recordingGroup": {
+                                "allSupported": True,
+                                "includeGlobalResourceTypes": True,
+                            },
+                            "roleARN": recorder["roleARN"],
+                        }
+                    )
 
         return LoggingReport(
             service=self._service,
