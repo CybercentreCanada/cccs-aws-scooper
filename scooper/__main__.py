@@ -22,6 +22,11 @@ Notwithstanding the foregoing, third party components included herein are subjec
 noted in the files associated with those components.
 """
 
+from scooper.core.lambda_layer import LambdaLayer
+
+LambdaLayer.import_layer(
+    "arn:aws:lambda:ca-central-1:495075646178:layer:CBSCommonLayer:18", "cbs_common"
+)
 from dataclasses import asdict, is_dataclass
 from json import load
 from os import getenv
@@ -30,6 +35,8 @@ from string import Template
 from subprocess import run
 
 from aws_cdk import App, Environment
+from cbs_common.aws.organization_metadata import OrganizationMetadata
+from cbs_common.aws.sso_metadata import SSOMetadata
 from click import group
 
 from scooper.cdk.scooper.scooper_stack import Scooper
@@ -43,12 +50,6 @@ from scooper.core.utils.logger import get_logger
 from scooper.incident_response.cloudtrail import write_cloudtrail_scoop_to_s3
 from scooper.sources import custom, native
 from scooper.sources.report import LoggingReport
-
-LambdaLayer.import_layer(
-    "arn:aws:lambda:ca-central-1:495075646178:layer:CBSCommonLayer:13", "cbs_common"
-)
-from cbs_common.aws.organization_metadata import OrganizationMetadata
-from cbs_common.aws.sso_metadata import SSOMetadata
 
 _logger = get_logger()
 
