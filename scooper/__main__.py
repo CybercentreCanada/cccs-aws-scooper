@@ -25,7 +25,7 @@ noted in the files associated with those components.
 from scooper.core.lambda_layer import LambdaLayer
 
 LambdaLayer.import_layer(
-    "arn:aws:lambda:ca-central-1:495075646178:layer:CBSCommonLayer:18", "cbs_common"
+    "arn:aws:lambda:ca-central-1:495075646178:layer:CBSCommonLayer:13", "cbs_common"
 )
 from dataclasses import asdict, is_dataclass
 from json import load
