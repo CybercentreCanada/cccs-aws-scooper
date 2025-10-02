@@ -26,14 +26,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from re import compile, match
-from typing import Optional, Union
+from typing import ClassVar, Optional, Union
 
 from aws_cdk import aws_s3 as s3
 from click import BadParameter, Context, Option
 
 
 def lifecycle_tokenizer(
-    _: Context, __: Option, value: Optional[str]
+    _: Context,
+    __: Option,
+    value: Optional[str],  # noqa: UP045
 ) -> list[S3LifecycleRule]:
     if value is not None:
         return S3LifecycleTokenizer(value).rules
@@ -42,14 +44,14 @@ def lifecycle_tokenizer(
 
 @dataclass(frozen=True)
 class S3LifecycleRule:
-    storage_class: Union[s3.StorageClass, str]
+    storage_class: Union[s3.StorageClass, str]  # noqa: UP007
     duration: int
 
 
 class S3LifecycleTokenizer:
     _pattern = compile(r"([A-Z_]+)\(([\d]+)d\)")
 
-    _storage_classes = {}
+    _storage_classes: ClassVar[dict] = {}
     for _attr in dir(s3.StorageClass):
         _attribute = getattr(s3.StorageClass, _attr)
         if isinstance(_attribute, s3.StorageClass):
@@ -74,16 +76,17 @@ class S3LifecycleTokenizer:
                     )
                 else:
                     raise BadParameter(f"Invalid lifecycle rules syntax: '{token}'")
-            except KeyError:
+            except KeyError as e:
                 if storage_class == "EXPIRY":
                     self.rules.append(S3LifecycleRule(storage_class, int(duration)))
                 else:
-                    available_storage_classes = list(self._storage_classes.keys()) + [
-                        "EXPIRY"
+                    available_storage_classes = [
+                        *list(self._storage_classes.keys()),
+                        "EXPIRY",
                     ]
                     raise BadParameter(
                         f"'{storage_class}' S3 storage class doesn't exist\nAvailable storage classes: {available_storage_classes}"
-                    )
+                    ) from e
 
     def _validate(self) -> None:
         expiry_rule = None

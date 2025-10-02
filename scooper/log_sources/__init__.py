@@ -22,4 +22,44 @@ Notwithstanding the foregoing, third party components included herein are subjec
 noted in the files associated with those components.
 """
 
-from .iam_metadata import *  # NOQA
+from abc import ABC, abstractmethod
+from typing import Any
+
+from scooper.core.config import ScooperConfig
+from scooper.log_sources.report import LoggingReport
+
+
+class ILogSource(ABC):
+    @property
+    @abstractmethod
+    def level(self) -> str:
+        pass
+
+    @property
+    @abstractmethod
+    def report(self) -> LoggingReport:
+        pass
+
+    @abstractmethod
+    def enumerate(self) -> Any:
+        pass
+
+    @abstractmethod
+    def get_report(self) -> LoggingReport:
+        pass
+
+
+class LogSource(ILogSource):
+    def __init__(self, scooper_config: ScooperConfig) -> None:
+        self.scooper_config = scooper_config
+        self._report = None
+
+    @property
+    def level(self) -> str:
+        return self.scooper_config.level
+
+    @property
+    def report(self) -> LoggingReport:
+        if self._report is None:
+            self._report = self.get_report()
+        return self._report

@@ -22,36 +22,50 @@ Notwithstanding the foregoing, third party components included herein are subjec
 noted in the files associated with those components.
 """
 
-from typing import Optional
+from string import Template
+from typing import TYPE_CHECKING
 
-from boto3 import client
-from botocore.client import BaseClient
+from boto3 import Session, client
 from botocore.exceptions import ClientError
+from cbs_common.aws.boto_types import DataRequest
+from cbs_common.aws.utilities import BotoHelper, assume_role
 
 from scooper.core.utils.logger import get_logger
+
+if TYPE_CHECKING:
+    from scooper.core.config import ScooperConfig
 
 STS_CLIENT = client("sts")
 _logger = get_logger()
 
 
-def assume_role(
-    role_arn: str, service: str, role_session_name: str = "AssumeRole"
-) -> Optional[BaseClient]:
-    """Assume given role and return given service's boto3 client."""
-    try:
-        response = STS_CLIENT.assume_role(
-            RoleArn=role_arn,
-            RoleSessionName=role_session_name,
-        )
-    except ClientError as e:
-        _logger.warning("Failed to assume role '%s'!\n%s", role_arn, e)
-        return
-
-    credentials = response["Credentials"]
-
-    return client(
-        service,
-        aws_access_key_id=credentials["AccessKeyId"],
-        aws_secret_access_key=credentials["SecretAccessKey"],
-        aws_session_token=credentials["SessionToken"],
+def get_all_account_sessions(
+    scooper_config: "ScooperConfig",
+) -> dict[str, Session]:
+    """Get all account sessions in organization."""
+    all_member_account_sessions: dict[str, Session] = {}
+    cross_account_role_template = Template(
+        f"arn:aws:iam::$account:role/{scooper_config.cross_account_role_name}"
     )
+
+    org_client = BotoHelper("organizations")
+    data_request = DataRequest(method="list_accounts", array_key="Accounts")
+    accounts = org_client(data_request)
+
+    for account in accounts:
+        account_id = account["Id"]
+        role_arn = cross_account_role_template.substitute(account=account_id)
+        try:
+            all_member_account_sessions[account_id] = assume_role(
+                role_arn=role_arn, sts_client=STS_CLIENT
+            )
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "AccessDenied":
+                if account_id == scooper_config.account_id:
+                    all_member_account_sessions[account_id] = Session()
+                else:
+                    _logger.exception("Failed to assume '%s'", role_arn)
+            else:
+                raise
+
+    return all_member_account_sessions

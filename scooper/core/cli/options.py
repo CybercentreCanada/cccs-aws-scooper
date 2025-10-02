@@ -31,37 +31,44 @@ cloudtrail_scoop = option(
     "--cloudtrail-scoop",
     is_flag=True,
     default=False,
-    help="Perform historical CloudTrail data collection of current account and region",
+    help="Perform historical CloudTrail data collection of current account and region.",
     required=False,
 )
 configure_logging = option(
     "--configure-logging",
     is_flag=True,
     default=False,
-    help="Deploy Scooper resources",
+    help="Deploy Scooper resources.",
     required=False,
 )
 destroy = option(
     "--destroy",
     is_flag=True,
     default=False,
-    help="Destroy Scooper resources",
+    help="Destroy Scooper resources.",
     required=False,
 )
 level = option(
     "--level",
-    help="Level of enumeration/resource creation to perform",
+    help="Level of enumeration/resource creation to perform.",
     type=Choice([ACCOUNT, ORG]),
     default=ACCOUNT,
 )
 lifecycle_rules = option(
     "--lifecycle-rules",
-    help="Comma-separated S3 storage class(es) and duration(s) in days of lifecycle protection for Scooper S3 bucket",
+    help="Comma-separated S3 storage class(es) and duration(s) in days of lifecycle protection for Scooper S3 bucket.",
     required=False,
     callback=lifecycle_tokenizer,
 )
 role_name = option(
     "--role-name",
-    help="Name of role with organization account access",
+    help="Name of role with organization account access.",
     default="OrganizationAccountAccessRole",
+)
+standalone = option(
+    "--standalone",
+    is_flag=True,
+    default=False,
+    help="Deploy standalone resources.",
+    required=False,
 )

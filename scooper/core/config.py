@@ -23,33 +23,73 @@ noted in the files associated with those components.
 """
 
 from dataclasses import dataclass, field
-from typing import Literal, Optional
+from datetime import timedelta
+from typing import Literal
 
+from boto3 import Session, client
 from botocore.exceptions import ClientError
+from pydantic import BaseModel
+from yaml import safe_dump as yaml_dump
 
 from scooper.core.constants import ORG
-from scooper.core.utils.organizations import ORG_CLIENT
-from scooper.core.utils.sts import STS_CLIENT
+from scooper.core.pki import CertificateAuthority, LeafCertificate
+from scooper.core.utils.sts import STS_CLIENT, get_all_account_sessions
 
 
 @dataclass
 class ScooperConfig:
     level: Literal["account", "org"]
-    org_role_name: Optional[str] = None
-    databricks_reader: bool = False
-    experimental_features: bool = False
+    cross_account_role_name: str
+    standalone: bool = False
+
+    certificate_authority: CertificateAuthority = field(init=False)
+    leaf_certificate: LeafCertificate = field(init=False)
 
     root_id: str = field(init=False)
     org_id: str = field(init=False)
+    account_id: str = field(init=False)
+    all_account_sessions: dict[str, Session] = field(init=False)
 
     def __post_init__(self) -> None:
-        if self.level == ORG:
-            try:
-                self.root_id = ORG_CLIENT.list_roots()["Roots"][0]["Id"]
-                self.org_id = ORG_CLIENT.describe_organization()["Organization"]["Id"]
-            except ClientError:
-                raise SystemExit(
-                    "You need to run Scooper from your organization's management account for org-level enumeration"
-                )
-
         self.account_id = STS_CLIENT.get_caller_identity()["Account"]
+
+        if self.is_org_level():
+            try:
+                org_client = client("organizations")
+                self.root_id = org_client.list_roots()["Roots"][0]["Id"]
+                self.org_id = org_client.describe_organization()["Organization"]["Id"]
+                self.all_account_sessions = get_all_account_sessions(self)
+            except ClientError as e:
+                raise SystemExit(
+                    "You need to run Scooper from your organization's management account for org-level enumeration/deployment."
+                ) from e
+
+        if self.standalone:
+            self.certificate_authority = CertificateAuthority(timedelta(days=365))
+            self.leaf_certificate = LeafCertificate(self.certificate_authority)
+
+    def is_org_level(self) -> bool:
+        return self.level == ORG
+
+
+class IAMRA(BaseModel):
+    reader_role_arn: str
+    trust_anchor_arn: str
+    profile_arn: str
+    certificate_path: str
+    private_key_path: str
+
+
+class OutputConfig(BaseModel):
+    identifier: str
+    account_id: str
+    region: str
+    bucket_name: str
+    queue_url: str
+    scooper_custom_query_role_name: str
+
+    iamra: IAMRA
+
+    def model_dump_yaml(self) -> None:
+        with open("output_config.yaml", "w") as f:
+            yaml_dump(self.model_dump(), f)

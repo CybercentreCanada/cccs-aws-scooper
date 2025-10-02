@@ -23,25 +23,28 @@ noted in the files associated with those components.
 """
 
 from boto3 import client
+from cbs_common.aws.utilities import paginate
 
+from scooper.core.config import ScooperConfig
 from scooper.core.constants import ACCOUNT, ORG, SCOOPER
 from scooper.core.utils.logger import get_logger
-from scooper.core.utils.paginate import paginate
-from scooper.sources import LogSource
-from scooper.sources.report import LoggingReport
+from scooper.log_sources import LogSource
+from scooper.log_sources.report import LoggingReport
 
 _logger = get_logger()
 
 
 class CloudTrail(LogSource):
-    def __init__(self, level: str) -> None:
-        super().__init__(level)
+    def __init__(self, scooper_config: ScooperConfig) -> None:
+        super().__init__(scooper_config)
         self._service = self.__class__.__name__
         self._client = client(self._service.lower())
 
     def enumerate(self) -> list[dict]:
         _logger.info("Enumerating %s...", self._service)
-        trails = paginate(self._client, "list_trails", "Trails")
+        trails = paginate(
+            client=self._client, command="list_trails", array="Trails", logger=_logger
+        )
 
         # Remove shadow trails
         trails = self._client.describe_trails(
@@ -55,9 +58,8 @@ class CloudTrail(LogSource):
         logging_enabled = False
 
         for trail in (trails := self.enumerate()):
-            if (
-                (trail["IsOrganizationTrail"] and self.level == ORG)
-                or (not trail["IsOrganizationTrail"] and self.level == ACCOUNT)
+            if (trail["IsOrganizationTrail"] and self.level == ORG) or (
+                (not trail["IsOrganizationTrail"] and self.level == ACCOUNT)
                 and trail["IncludeGlobalServiceEvents"]
                 and trail["IsMultiRegionTrail"]
             ):

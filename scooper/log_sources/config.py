@@ -23,19 +23,20 @@ noted in the files associated with those components.
 """
 
 from boto3 import client
+from cbs_common.aws.utilities import paginate
 
+from scooper.core.config import ScooperConfig
 from scooper.core.constants import SCOOPER
 from scooper.core.utils.logger import get_logger
-from scooper.core.utils.paginate import paginate
-from scooper.sources import LogSource
-from scooper.sources.report import LoggingReport
+from scooper.log_sources import LogSource
+from scooper.log_sources.report import LoggingReport
 
 _logger = get_logger()
 
 
 class Config(LogSource):
-    def __init__(self, level: str) -> None:
-        super().__init__(level)
+    def __init__(self, scooper_config: ScooperConfig) -> None:
+        super().__init__(scooper_config)
         self._service = self.__class__.__name__
         self._client = client(self._service.lower())
 
@@ -43,9 +44,10 @@ class Config(LogSource):
         _logger.info("Enumerating Configuration Aggregators...")
 
         config_aggregators = paginate(
-            self._client,
-            "describe_configuration_aggregators",
-            "ConfigurationAggregators",
+            client=self._client,
+            command="describe_configuration_aggregators",
+            array="ConfigurationAggregators",
+            logger=_logger,
         )
         # Update aggregators with status information
         config_aggregators = {
@@ -57,9 +59,10 @@ class Config(LogSource):
             config_aggregators.update(
                 {
                     aggregator: paginate(
-                        self._client,
-                        "describe_configuration_aggregator_sources_status",
-                        "AggregatedSourceStatusList",
+                        client=self._client,
+                        command="describe_configuration_aggregator_sources_status",
+                        array="AggregatedSourceStatusList",
+                        logger=_logger,
                         ConfigurationAggregatorName=aggregator,
                     )[0]
                 }
@@ -131,25 +134,6 @@ class Config(LogSource):
                 )
                 config_enabled = True
                 owned_by_scooper = SCOOPER.lower() in recorder_name.lower()
-                if (
-                    owned_by_scooper
-                    and recorder["recordingGroup"]["includeGlobalResourceTypes"]
-                    == False
-                ):
-                    _logger.info(
-                        "Enabling global resource types on recorder: '%s'...",
-                        recorder_name,
-                    )
-                    self._client.put_configuration_recorder(
-                        ConfigurationRecorder={
-                            "name": recorder_name,
-                            "recordingGroup": {
-                                "allSupported": True,
-                                "includeGlobalResourceTypes": True,
-                            },
-                            "roleARN": recorder["roleARN"],
-                        }
-                    )
 
         return LoggingReport(
             service=self._service,

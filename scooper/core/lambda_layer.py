@@ -22,18 +22,26 @@ Notwithstanding the foregoing, third party components included herein are subjec
 noted in the files associated with those components.
 """
 
-import sys
 from io import BytesIO
 from pathlib import Path
+from sys import path as syspath
 from urllib.request import urlopen
 from zipfile import ZipFile
 
 from boto3 import client
 
+CBS_COMMON_LAMBDA_LAYER_ARN = (
+    "arn:aws:lambda:ca-central-1:495075646178:layer:CBSCommonLayer"
+)
+CBS_COMMON_LAMBDA_LAYER_VERSION = 29
+CBS_COMMON_LAMBDA_LAYER_VERSION_ARN = (
+    f"{CBS_COMMON_LAMBDA_LAYER_ARN}:{CBS_COMMON_LAMBDA_LAYER_VERSION}"
+)
+
 
 class LambdaLayer:
     path = Path("/tmp/lambda_layers")
-    full_path = path / Path("python")
+    full_path = path / "python"
 
     @classmethod
     def _exists(cls, layer_name: str) -> bool:
@@ -48,10 +56,9 @@ class LambdaLayer:
         response = lambda_client.get_layer_version_by_arn(Arn=arn)
         url = response["Content"]["Location"]
         # Download Lambda Layer and extract zip to /tmp
-        with urlopen(url) as zipresp:
-            with ZipFile(BytesIO(zipresp.read())) as zfile:
-                cls._validate(zfile, module_name)
-                zfile.extractall(cls.path)
+        with urlopen(url) as zipresp, ZipFile(BytesIO(zipresp.read())) as zfile:
+            cls._validate(zfile, module_name)
+            zfile.extractall(cls.path)
 
     @classmethod
     def _validate(cls, zip_file: ZipFile, module_name: str) -> None:
@@ -72,4 +79,4 @@ class LambdaLayer:
         if not cls._exists(module_name):
             cls._download(layer_version_arn, module_name)
 
-        sys.path.append(str(cls.full_path))
+        syspath.append(str(cls.full_path))

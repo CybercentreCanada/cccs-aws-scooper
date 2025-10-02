@@ -130,14 +130,6 @@ Scooper can be run with the following options:
 2. In the virtual environment, run `pip install -r requirements-dev.txt`.
 3. Run `pre-commit install` to install the git pre-commit hooks.
 
-To run unit tests across our modules from the root directory run `pytest`.
-To test the enumeration of the different log sources, the following commands can be run:
-
-- `pytest scooper/cdk/tests/unit/test_config.py`
-  - Tests Config Logs
-- `pytest scooper/cdk/tests/unit/test_cloudtrail.py`
-  - Tests CloudTrail Logs
-
 ## Contributions
 
 ### Pull Request Guidelines
@@ -290,14 +282,6 @@ Scooper peut être exécuté avec les options suivantes :
    - Pour les systèmes Linux : `python3 venv .venv && source .venv/bin/activate`.
 2. Dans l'environnement virtuel, lancez `pip install -r requirements-dev.txt`.
 3. Exécutez `pre-commit install` pour installer les crochets de pré-commit de git.
-
-Pour exécuter les tests unitaires de nos modules à partir du répertoire racine, exécutez `pytest`.
-Pour tester l'énumération des différentes sources de journaux, les commandes suivantes peuvent être exécutées :
-
-- `pytest scooper/cdk/tests/unit/test_config.py`
-  - Tests des journaux Config
-- `pytest scooper/cdk/tests/unit/test_cloudtrail.py`
-  - Tests des journaux CloudTrail
 
 ## Contributions FR
 

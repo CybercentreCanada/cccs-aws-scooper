@@ -22,43 +22,24 @@ Notwithstanding the foregoing, third party components included herein are subjec
 noted in the files associated with those components.
 """
 
-from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any
 
-from .report import LoggingReport
+from cbs_common.datetimes import utc_now
 
 
-class ILogSource(ABC):
-    @property
-    @abstractmethod
-    def level(self) -> str:
-        pass
+@dataclass
+class LoggingReport:
+    service: str
+    logging_enabled: bool
+    details: dict[str, Any]
 
-    @property
-    @abstractmethod
-    def report(self) -> LoggingReport:
-        pass
+    event_time: datetime = field(default_factory=utc_now)
+    owned_by_scooper: bool = field(default=False)
 
-    @abstractmethod
-    def enumerate(self) -> Any:
-        pass
-
-    @abstractmethod
-    def get_report(self) -> LoggingReport:
-        pass
-
-
-class LogSource(ILogSource):
-    def __init__(self, level: str) -> None:
-        self._level = level
-        self._report = None
-
-    @property
-    def level(self) -> str:
-        return self._level
-
-    @property
-    def report(self) -> LoggingReport:
-        if self._report is None:
-            self._report = self.get_report()
-        return self._report
+    def cdk_needed(self) -> bool:
+        """Check `if (logging is enabled and owned by Scooper) or (logging is disabled and not owned by Scooper)`."""
+        return (self.logging_enabled and self.owned_by_scooper) or (
+            not self.logging_enabled and not self.owned_by_scooper
+        )

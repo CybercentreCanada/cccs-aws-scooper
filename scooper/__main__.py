@@ -22,34 +22,31 @@ Notwithstanding the foregoing, third party components included herein are subjec
 noted in the files associated with those components.
 """
 
-from scooper.core.lambda_layer import LambdaLayer
-
-LambdaLayer.import_layer(
-    "arn:aws:lambda:ca-central-1:495075646178:layer:CBSCommonLayer:13", "cbs_common"
-)
 from dataclasses import asdict, is_dataclass
-from json import load
-from os import getenv
 from pathlib import Path
-from string import Template
-from subprocess import run
 
-from aws_cdk import App, Environment
-from cbs_common.aws.organization_metadata import OrganizationMetadata
-from cbs_common.aws.sso_metadata import SSOMetadata
+from boto3 import Session, client
+from botocore.config import Config as BotoConfig
 from click import group
 
-from scooper.cdk.scooper.scooper_stack import Scooper
+from scooper.configure_logging import deploy
 from scooper.core.cli import options
 from scooper.core.cli.callbacks import S3LifecycleRule
 from scooper.core.config import ScooperConfig
-from scooper.core.constants import ORG, SCOOPER
-from scooper.core.lambda_layer import LambdaLayer
-from scooper.core.utils.io import date_range_input, write_dict_to_file, write_dict_to_s3
+from scooper.core.lambda_layer import CBS_COMMON_LAMBDA_LAYER_VERSION_ARN, LambdaLayer
+from scooper.core.utils.io import date_range_input, write_dict_to_file
 from scooper.core.utils.logger import get_logger
+from scooper.core.utils.s3 import is_bucket_writable
 from scooper.incident_response.cloudtrail import write_cloudtrail_scoop_to_s3
-from scooper.sources import custom, native
-from scooper.sources.report import LoggingReport
+from scooper.log_sources.cloudtrail import CloudTrail
+from scooper.log_sources.cloudwatch import CloudWatch
+from scooper.log_sources.config import Config
+
+LambdaLayer.import_layer(CBS_COMMON_LAMBDA_LAYER_VERSION_ARN, "cbs_common")
+
+from cbs_common.aws.iam_metadata import IAMMetadata
+from cbs_common.aws.organization_metadata import OrganizationMetadata
+from cbs_common.aws.sso_metadata import SSOMetadata
 
 _logger = get_logger()
 
@@ -61,6 +58,7 @@ _logger = get_logger()
 @options.level
 @options.lifecycle_rules
 @options.role_name
+@options.standalone
 def main(
     cloudtrail_scoop: bool,
     configure_logging: bool,
@@ -68,42 +66,51 @@ def main(
     level: str,
     lifecycle_rules: list[S3LifecycleRule],
     role_name: str,
+    standalone: bool,
 ) -> None:
-    scooper_config = ScooperConfig(level, role_name)
-
-    cloudtrail = native.CloudTrail(level)
-    cloudwatch = native.CloudWatch(level, scooper_config)
-    config = native.Config(level)
-    iam = custom.IAMMetadata(
-        level,
-        organizational_account_access_role_template=Template(
-            f"arn:aws:iam::$account:role/{role_name}"
-        ),
+    scooper_config = ScooperConfig(
+        level=level, cross_account_role_name=role_name, standalone=standalone
     )
 
-    reports = {
+    cloudtrail = CloudTrail(scooper_config)
+    cloudwatch = CloudWatch(scooper_config)
+    config = Config(scooper_config)
+    iam_credential_reports = (
+        [
+            IAMMetadata(account_id, session.client("iam")).get_report()
+            for account_id, session in scooper_config.all_account_sessions.items()
+        ]
+        if scooper_config.is_org_level()
+        else IAMMetadata(scooper_config.account_id, client("iam")).get_report()
+    )
+
+    logging_reports = {
         "cloudtrail": cloudtrail.report,
         "cloudwatch": cloudwatch.report,
         "config": config.report,
-        "iam_metadata": iam.get_report(),
+        "iam_metadata": iam_credential_reports,
     }
 
-    if level == ORG:
-        reports["organization_metadata"] = OrganizationMetadata().get_report()
-        reports["sso_metadata"] = SSOMetadata().get_report()
+    if scooper_config.is_org_level():
+        logging_reports["organization_metadata"] = OrganizationMetadata().get_report()
+        logging_reports["sso_metadata"] = SSOMetadata().get_report()
 
-    for title, report in reports.items():
+    for service, logging_report in logging_reports.items():
         write_dict_to_file(
-            asdict(report) if is_dataclass(report) else report,
-            Path(f"out/{title}.json"),
+            obj=(
+                asdict(logging_report)
+                if is_dataclass(logging_report)
+                else logging_report
+            ),
+            path=Path(f"out/{service}.json"),
         )
 
     if configure_logging or destroy:
-        _configure_logging(
-            scooper_config=scooper_config,
-            reports=reports,
+        deploy(
+            logging_reports=logging_reports,
             destroy=destroy,
             lifecycle_rules=lifecycle_rules,
+            scooper_config=scooper_config,
         )
 
     if cloudtrail_scoop:
@@ -112,100 +119,23 @@ def main(
         bucket_name = input(
             "Enter name of bucket you want to dump historical logs to: "
         ).strip()
-        write_cloudtrail_scoop_to_s3(start_time, end_time, bucket_name)
 
-
-def _configure_logging(
-    scooper_config: ScooperConfig,
-    reports: dict[str, LoggingReport],
-    destroy: bool,
-    lifecycle_rules: list[S3LifecycleRule],
-) -> None:
-    app = App()
-    stack_name = SCOOPER
-
-    Scooper(
-        app,
-        stack_name,
-        scooper_config=scooper_config,
-        logging_reports=[
-            report for report in reports.values() if isinstance(report, LoggingReport)
-        ],
-        env=Environment(
-            account=getenv("CDK_DEFAULT_ACCOUNT"), region=getenv("CDK_DEFAULT_REGION")
-        ),
-        termination_protection=True,
-        lifecycle_rules=lifecycle_rules,
-    )
-
-    if destroy:
-        run(
-            [
-                "aws",
-                "cloudformation",
-                "update-termination-protection",
-                "--stack-name",
-                stack_name,
-                "--no-enable-termination-protection",
-            ]
-        )
-        run(
-            [
-                "cdk",
-                "destroy",
-                "--app",
-                app.synth().directory,
-            ]
-        )
-        return
-
-    stack_outputs = Path("out/stack_outputs.json")
-    _logger.info("Deploying %s stack...", stack_name)
-    run(
-        [
-            "cdk",
-            "deploy",
-            "--app",
-            app.synth().directory,
-            f"--outputs-file={stack_outputs}",
-        ]
-    )
-
-    with stack_outputs.open("r") as f:
-        outputs = load(f)
-
-    if outputs:
-        _logger.info("Reading %s outputs...", stack_name)
-        bucket_name = outputs[stack_name]["BucketName"]
-    else:
-        _logger.critical("%s deploy failed!", stack_name)
-        raise SystemExit
-
-    object_key_prefixes = [
-        report.service
-        for report in reports.values()
-        if isinstance(report, LoggingReport) and Scooper.check_logging(report)
-    ]
-    write_dict_to_file(
-        obj={"bucket_name": bucket_name, "object_key_prefixes": object_key_prefixes},
-        path=Path("out/logging.json"),
-    )
-
-    if scooper_config.level == ORG:
-        _logger.info("Publishing %s metadata...", stack_name)
-        for name, report in reports.items():
-            if isinstance(report, LoggingReport):
-                write_dict_to_s3(
-                    report.details,
-                    bucket_name,
-                    f"scooper/{name}.json",
+        if is_bucket_writable(bucket_name):
+            session = Session()
+            config = BotoConfig(retries={"mode": "adaptive", "max_attempts": 16})
+            for region in session.get_available_regions("cloudtrail"):
+                write_cloudtrail_scoop_to_s3(
+                    start_time=start_time,
+                    end_time=end_time,
+                    account_id=scooper_config.account_id,
+                    region=region,
+                    bucket_name=bucket_name,
+                    cloudtrail_client=session.client(
+                        "cloudtrail", region_name=region, config=config
+                    ),
                 )
-            else:
-                write_dict_to_s3(
-                    report,
-                    bucket_name,
-                    f"scooper/{name}.json",
-                )
+        else:
+            raise SystemExit(f"Can't write to '{bucket_name}'")
 
 
 if __name__ == "__main__":

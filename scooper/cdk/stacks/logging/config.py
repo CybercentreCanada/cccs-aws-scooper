@@ -22,18 +22,17 @@ Notwithstanding the foregoing, third party components included herein are subjec
 noted in the files associated with those components.
 """
 
-import aws_cdk as cdk
-import aws_cdk.aws_config as config
-import aws_cdk.aws_iam as iam
-import aws_cdk.aws_s3 as s3
+from aws_cdk import NestedStack
+from aws_cdk import aws_config as config
+from aws_cdk import aws_iam as iam
+from aws_cdk import aws_s3 as s3
 from constructs import Construct
 
 from scooper.core.config import ScooperConfig
-from scooper.core.constants import ACCOUNT, ORG
-from scooper.sources.report import LoggingReport
+from scooper.log_sources.report import LoggingReport
 
 
-class Config(cdk.NestedStack):
+class Config(NestedStack):
     def __init__(
         self,
         scope: Construct,
@@ -45,46 +44,77 @@ class Config(cdk.NestedStack):
     ) -> None:
         super().__init__(scope, construct_id)
 
-        config_name = "{}Config-Scooper".format(scooper_config.level.capitalize())
+        name = f"{scooper_config.level.capitalize()}Config-Scooper"
         config_service_principal = iam.ServicePrincipal("config.amazonaws.com")
 
-        aggregator_role = iam.Role(
-            self,
-            "AggregatorRole",
-            assumed_by=config_service_principal,
-            managed_policies=[
-                iam.ManagedPolicy.from_aws_managed_policy_name(
-                    "service-role/AWSConfigRoleForOrganizations"
-                )
-            ],
-        )
-
-        recorder_role = iam.Role(
-            self,
-            "RecorderRole",
-            assumed_by=config_service_principal,
-            managed_policies=[
-                iam.ManagedPolicy.from_aws_managed_policy_name(
-                    "service-role/AWS_ConfigRole"
-                )
-            ],
-        )
-        recorder_role.add_to_policy(
-            iam.PolicyStatement(
-                actions=["s3:PutObject*", "s3:GetBucketAcl"], resources=["*"]
-            )
-        )
-        recorder_role.add_to_policy(
-            iam.PolicyStatement(
-                actions=["kms:Encrypt", "kms:GenerateDataKey"],
-                resources=[scooper_bucket.encryption_key.key_arn],
-            )
-        )
-
-        if scooper_config.level == ACCOUNT:
-            condition = {"AWS:SourceAccount": scooper_config.account_id}
-        elif scooper_config.level == ORG:
+        if scooper_config.is_org_level():
             condition = {"AWS:PrincipalOrgID": scooper_config.org_id}
+            aggregator_role = iam.Role(
+                self,
+                "AggregatorRole",
+                assumed_by=config_service_principal,
+                managed_policies=[
+                    iam.ManagedPolicy.from_aws_managed_policy_name(
+                        "service-role/AWSConfigRoleForOrganizations"
+                    )
+                ],
+            )
+            config.CfnConfigurationAggregator(
+                self,
+                name,
+                organization_aggregation_source=config.CfnConfigurationAggregator.OrganizationAggregationSourceProperty(
+                    role_arn=aggregator_role.role_arn,
+                    all_aws_regions=True,
+                ),
+                configuration_aggregator_name=name,
+            )
+        else:
+            condition = {"AWS:SourceAccount": scooper_config.account_id}
+            recorder_role = iam.Role(
+                self,
+                "RecorderRole",
+                assumed_by=config_service_principal,
+                managed_policies=[
+                    iam.ManagedPolicy.from_aws_managed_policy_name(
+                        "service-role/AWS_ConfigRole"
+                    )
+                ],
+            )
+            recorder_role.add_to_policy(
+                iam.PolicyStatement(
+                    actions=["s3:PutObject*", "s3:GetBucketAcl"], resources=["*"]
+                )
+            )
+            recorder_role.add_to_policy(
+                iam.PolicyStatement(
+                    actions=["kms:Encrypt", "kms:GenerateDataKey"],
+                    resources=[scooper_bucket.encryption_key.key_arn],
+                )
+            )
+            config.CfnConfigurationRecorder(
+                self,
+                name,
+                name=name,
+                role_arn=recorder_role.role_arn,
+                recording_group=config.CfnConfigurationRecorder.RecordingGroupProperty(
+                    all_supported=True,
+                    include_global_resource_types=True,
+                    recording_strategy=config.CfnConfigurationRecorder.RecordingStrategyProperty(
+                        "ALL_SUPPORTED_RESOURCE_TYPES"
+                    ),
+                ),
+            )
+            config.CfnDeliveryChannel(
+                self,
+                "DeliveryChannel",
+                name="ScooperConfigDeliveryChannel",
+                s3_bucket_name=scooper_bucket.bucket_name,
+                s3_key_prefix=logging_report.service,
+                s3_kms_key_arn=scooper_bucket.encryption_key.key_arn,
+                config_snapshot_delivery_properties=config.CfnDeliveryChannel.ConfigSnapshotDeliveryPropertiesProperty(
+                    delivery_frequency="One_Hour"
+                ),
+            )
 
         scooper_bucket.add_to_resource_policy(
             iam.PolicyStatement(
@@ -119,48 +149,3 @@ class Config(cdk.NestedStack):
             )
         )
         scooper_bucket.encryption_key.grant_encrypt_decrypt(config_service_principal)
-
-        if scooper_config.level == ACCOUNT:
-            self.aggregator = config.CfnConfigurationAggregator(
-                self,
-                config_name,
-                account_aggregation_sources=[
-                    config.CfnConfigurationAggregator.AccountAggregationSourceProperty(
-                        account_ids=[self.account],
-                        all_aws_regions=True,
-                    )
-                ],
-                configuration_aggregator_name=config_name,
-            )
-        elif scooper_config.level == ORG:
-            self.aggregator = config.CfnConfigurationAggregator(
-                self,
-                config_name,
-                organization_aggregation_source=config.CfnConfigurationAggregator.OrganizationAggregationSourceProperty(
-                    role_arn=aggregator_role.role_arn,
-                    all_aws_regions=True,
-                ),
-                configuration_aggregator_name=config_name,
-            )
-
-        config.CfnConfigurationRecorder(
-            self,
-            "ConfigRecorder",
-            name="ScooperConfigRecorder",
-            role_arn=recorder_role.role_arn,
-            recording_group=config.CfnConfigurationRecorder.RecordingGroupProperty(
-                all_supported=True, include_global_resource_types=True
-            ),
-        )
-
-        config.CfnDeliveryChannel(
-            self,
-            "DeliveryChannel",
-            name="ScooperConfigDeliveryChannel",
-            s3_bucket_name=scooper_bucket.bucket_name,
-            s3_key_prefix=logging_report.service,
-            s3_kms_key_arn=scooper_bucket.encryption_key.key_arn,
-            config_snapshot_delivery_properties=config.CfnDeliveryChannel.ConfigSnapshotDeliveryPropertiesProperty(
-                delivery_frequency="One_Hour"
-            ),
-        )

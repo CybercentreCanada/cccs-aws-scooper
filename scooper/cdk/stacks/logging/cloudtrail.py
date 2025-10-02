@@ -22,18 +22,17 @@ Notwithstanding the foregoing, third party components included herein are subjec
 noted in the files associated with those components.
 """
 
-import aws_cdk as cdk
-import aws_cdk.aws_cloudtrail as cloudtrail
-import aws_cdk.aws_iam as iam
-import aws_cdk.aws_s3 as s3
+from aws_cdk import NestedStack
+from aws_cdk import aws_cloudtrail as cloudtrail
+from aws_cdk import aws_iam as iam
+from aws_cdk import aws_s3 as s3
 from constructs import Construct
 
 from scooper.core.config import ScooperConfig
-from scooper.core.constants import ORG
-from scooper.sources.report import LoggingReport
+from scooper.log_sources.report import LoggingReport
 
 
-class CloudTrail(cdk.NestedStack):
+class CloudTrail(NestedStack):
     def __init__(
         self,
         scope: Construct,
@@ -45,7 +44,7 @@ class CloudTrail(cdk.NestedStack):
     ) -> None:
         super().__init__(scope, construct_id)
 
-        trail_name = "{}Trail-Scooper".format(scooper_config.level.capitalize())
+        trail_name = f"{scooper_config.level.capitalize()}Trail-Scooper"
         cloudtrail_service_principal = iam.ServicePrincipal("cloudtrail.amazonaws.com")
 
         scooper_bucket.add_to_resource_policy(
@@ -86,5 +85,5 @@ class CloudTrail(cdk.NestedStack):
             bucket=scooper_bucket,
             s3_key_prefix=logging_report.service,
             encryption_key=scooper_bucket.encryption_key,
-            is_organization_trail=scooper_config.level == ORG,
+            is_organization_trail=scooper_config.is_org_level(),
         )

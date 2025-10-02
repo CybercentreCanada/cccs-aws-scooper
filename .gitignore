@@ -2,19 +2,13 @@
 __pycache__
 .pytest_cache
 
-# Virtual environments
+# Virtual environment
 *env
-*venv
 
 # IDEs
 .vscode
-pyrightconfig.json
 .idea
-
-# Pants workspace files
-/.pants.*
-/dist/
-/.pids
 
 # Scooper output
 out/*
+pki/*

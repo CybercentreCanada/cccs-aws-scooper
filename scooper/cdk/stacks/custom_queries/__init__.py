@@ -22,29 +22,9 @@ Notwithstanding the foregoing, third party components included herein are subjec
 noted in the files associated with those components.
 """
 
-from typing import Any
+from pathlib import Path
 
-from botocore.client import BaseClient
-from tqdm import tqdm
+_current_directory = Path(__file__).parent
 
-from scooper.core.utils.logger import get_logger
-
-_logger = get_logger()
-
-
-def paginate(client: BaseClient, command: str, array: str, **kwargs) -> list[Any]:
-    """Paginate given boto3 command."""
-    elements = []
-    paginator = client.get_paginator(command)
-
-    try:
-        with tqdm(
-            desc=f"Getting {client.meta.service_model.service_name} data", leave=False
-        ) as pbar:
-            for page in paginator.paginate(**kwargs):
-                elements.extend(page.get(array, []))
-                pbar.update()
-    except Exception as e:
-        _logger.error("Pagination failed: %s", e)
-
-    return elements
+POLICY_PATH = _current_directory / "policy.yaml"
+STACKSETS_TEMPLATE_PATH = _current_directory / "stacksets_template.yaml"

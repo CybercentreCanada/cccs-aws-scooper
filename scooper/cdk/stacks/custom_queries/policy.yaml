@@ -1,0 +1,39 @@
+PolicyName: scooper-custom-queries-policy
+PolicyDocument:
+  Version: '2012-10-17'
+  Statement:
+    - Sid: IAMMetadata
+      Effect: Allow
+      Action:
+        - iam:GenerateCredentialReport
+        - iam:GetCredentialReport
+        - iam:ListUsers
+        - iam:ListVirtualMFADevices
+      Resource: '*'
+
+    - Sid: OrganizationMetadata
+      Effect: Allow
+      Action:
+        - organizations:DescribeAccount
+        - organizations:DescribeOrganizationalUnit
+        - organizations:ListChildren
+        - organizations:ListRoots
+      Resource: '*'
+
+    - Sid: SSOMetadata
+      Effect: Allow
+      Action:
+        - ds:DescribeDirectories
+        - identitystore:ListGroupMemberships
+        - identitystore:ListGroups
+        - identitystore:ListUsers
+        - sso:DescribePermissionSet
+        - sso:GetInlinePolicyForPermissionSet
+        - sso:GetPermissionsBoundaryForPermissionSet
+        - sso:ListAccountAssignments
+        - sso:ListAccountsForProvisionedPermissionSet
+        - sso:ListCustomerManagedPolicyReferencesInPermissionSet
+        - sso:ListInstances
+        - sso:ListPermissionSets
+        - sso:ListManagedPoliciesInPermissionSet
+      Resource: '*'

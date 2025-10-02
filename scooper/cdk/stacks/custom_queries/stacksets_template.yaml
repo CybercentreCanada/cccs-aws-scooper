@@ -1,0 +1,19 @@
+Resources:
+  ScooperCustomQueryRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: scooper-custom-query-role
+      Description: Scooper custom query role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS:
+            Action:
+              - sts:AssumeRole
+              - sts:SetSourceIdentity
+              - sts:TagSession
+      Tags:
+        - Key: Owner
+          Value: Scooper

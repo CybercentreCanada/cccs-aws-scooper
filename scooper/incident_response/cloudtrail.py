@@ -27,17 +27,14 @@ from dataclasses import dataclass
 from datetime import datetime
 from json import loads
 
-from boto3 import Session, client
-from botocore.config import Config
+from botocore.client import BaseClient
+from cbs_common.aws.utilities import paginate
 
 from scooper.core.utils.io import write_dict_to_s3
 from scooper.core.utils.logger import get_logger
-from scooper.core.utils.paginate import paginate
-from scooper.core.utils.sts import STS_CLIENT
 
 NUM_WORKERS = 2  # We get throttled beyond this :(
 
-config = Config(retries={"mode": "adaptive", "max_attempts": 16})
 _logger = get_logger()
 
 
@@ -47,10 +44,10 @@ class TimeRange:
     end: datetime
 
 
-def get_cloudtrail_events(start_time: datetime, end_time: datetime) -> list[dict]:
+def get_cloudtrail_events(
+    start_time: datetime, end_time: datetime, cloudtrail_client: BaseClient
+) -> list[dict]:
     """Get CloudTrail events between `start_time` and `end_time` in current account and region."""
-    cloudtrail_client = client("cloudtrail", config=config)
-
     time_interval = (end_time - start_time) / NUM_WORKERS
     periods: list[TimeRange] = []
     period_start = start_time
@@ -71,6 +68,7 @@ def get_cloudtrail_events(start_time: datetime, end_time: datetime) -> list[dict
                     cloudtrail_client,
                     "lookup_events",
                     "Events",
+                    _logger,
                     StartTime=period.start,
                     EndTime=period.end,
                 )
@@ -81,7 +79,7 @@ def get_cloudtrail_events(start_time: datetime, end_time: datetime) -> list[dict
     return cloudtrail_scoops
 
 
-class CloudTrailDump:
+class CloudTrailData:
     def __init__(self, data: list[dict]) -> None:
         self._data = data
 
@@ -107,18 +105,19 @@ class CloudTrailDump:
 
 
 def write_cloudtrail_scoop_to_s3(
-    start_time: datetime, end_time: datetime, bucket_name: str
+    start_time: datetime,
+    end_time: datetime,
+    account_id: str,
+    region: str,
+    bucket_name: str,
+    cloudtrail_client: BaseClient,
 ) -> None:
-    """Write historical CloudTrail data to given `bucket_name`."""
-    session = Session()
-    region = session.region_name
-    account_id = STS_CLIENT.get_caller_identity()["Account"]
-
+    """Write historical CloudTrail data to `bucket_name`."""
     _logger.info(
         f"Getting CloudTrail data between '{start_time}' and '{end_time}' in account '{account_id}' and region '{region}'..."
     )
-    data = get_cloudtrail_events(start_time, end_time)
-    partitions = CloudTrailDump(data).partition()
+    data = get_cloudtrail_events(start_time, end_time, cloudtrail_client)
+    partitions = CloudTrailData(data).partition()
     cloudtrail_prefix = f"scooper/CloudTrail/{account_id}/{region}"
 
     for datetime_, partition in partitions.items():

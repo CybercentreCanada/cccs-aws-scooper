@@ -22,48 +22,18 @@ Notwithstanding the foregoing, third party components included herein are subjec
 noted in the files associated with those components.
 """
 
-import os
-
-from boto3 import client
-from moto import mock_cloudtrail, mock_config, mock_ec2, mock_s3, mock_sts
-from pytest import fixture
+from boto3 import resource
+from botocore.exceptions import ClientError
 
 
-@fixture(scope="module", autouse=True)
-def aws_credentials():
-    """Mocked AWS Credentials for moto."""
-    os.environ["AWS_ACCESS_KEY_ID"] = "testing"
-    os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
-    os.environ["AWS_SECURITY_TOKEN"] = "testing"
-    os.environ["AWS_SESSION_TOKEN"] = "testing"
-    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
+def is_bucket_writable(bucket_name: str) -> bool:
+    try:
+        bucket = resource("s3").Bucket(bucket_name)
+        bucket.Object(key="temp").put(Body=b"")
+        bucket.Object(key="temp").delete()
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "AccessDenied":
+            return False
+        raise
 
-
-@fixture(scope="module")
-def config_client():
-    with mock_config():
-        yield client("config")
-
-
-@fixture(scope="module")
-def sts_client():
-    with mock_sts():
-        yield client("sts")
-
-
-@fixture(scope="module")
-def cloudtrail_client():
-    with mock_cloudtrail():
-        yield client("cloudtrail")
-
-
-@fixture(scope="module")
-def s3_client():
-    with mock_s3():
-        yield client("s3")
-
-
-@fixture(scope="module")
-def ec2_client():
-    with mock_ec2():
-        yield client("ec2")
+    return True

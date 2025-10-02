@@ -22,6 +22,20 @@ Notwithstanding the foregoing, third party components included herein are subjec
 noted in the files associated with those components.
 """
 
-from .cloudtrail import *  # NOQA
-from .cloudwatch import *  # NOQA
-from .config import *  # NOQA
+from aws_cdk import aws_iam as iam
+from constructs import Construct
+
+
+class Role(iam.Role):
+    """Custom `iam.Role` construct that allows you to specify a role's assume role policy at a later time."""
+
+    def __init__(self, scope: Construct, id: str, **kwargs) -> None:
+        super().__init__(scope, id, assumed_by=iam.AccountPrincipal(""), **kwargs)
+        # Use escape hatch to override assume role policy with empty policy
+        self.cfn = super().node.default_child
+        self.cfn.assume_role_policy_document = iam.PolicyDocument()
+
+    @property
+    def assume_role_policy(self) -> iam.PolicyDocument:
+        """Override to expose underlying L1 construct."""
+        return self.cfn.assume_role_policy_document
