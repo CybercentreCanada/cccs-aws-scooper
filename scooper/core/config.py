@@ -22,35 +22,58 @@ Notwithstanding the foregoing, third party components included herein are subjec
 noted in the files associated with those components.
 """
 
-from dataclasses import dataclass, field
-from datetime import timedelta
-from typing import Literal
+from __future__ import annotations
 
-from boto3 import Session, client
+from datetime import timedelta
+from json import JSONDecodeError, loads
+from typing import Any, Literal, Optional
+
+from boto3 import client
 from botocore.exceptions import ClientError
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError, field_serializer, field_validator
 from yaml import safe_dump as yaml_dump
 
-from scooper.core.constants import ORG
+from scooper.core.cli.callbacks import S3LifecycleRule, S3LifecycleTokenizer
+from scooper.core.constants import ORG, SCOOPER
 from scooper.core.pki import CertificateAuthority, LeafCertificate
+from scooper.core.utils.logger import get_logger
 from scooper.core.utils.sts import STS_CLIENT, get_all_account_sessions
 
+_logger = get_logger()
 
-@dataclass
-class ScooperConfig:
+
+class DeploymentConfig(BaseModel, arbitrary_types_allowed=True):
+    """Configuration model for deployment settings."""
+
     level: Literal["account", "org"]
     cross_account_role_name: str
-    standalone: bool = False
+    lifecycle_rules: list[S3LifecycleRule]
+    standalone: bool
 
-    certificate_authority: CertificateAuthority = field(init=False)
-    leaf_certificate: LeafCertificate = field(init=False)
+    @field_validator("lifecycle_rules", mode="before")
+    @classmethod
+    def validate_lifecycle_rules(cls, lifecycle_rules: Any) -> list[S3LifecycleRule]:
+        """Convert lifecycle_rules from list of strings to list of S3LifecycleRule objects."""
+        if not lifecycle_rules:
+            return []
 
-    root_id: str = field(init=False)
-    org_id: str = field(init=False)
-    account_id: str = field(init=False)
-    all_account_sessions: dict[str, Session] = field(init=False)
+        if all(isinstance(rule, str) for rule in lifecycle_rules):
+            return S3LifecycleTokenizer(",".join(lifecycle_rules)).rules
 
-    def __post_init__(self) -> None:
+        return lifecycle_rules
+
+    @field_serializer("lifecycle_rules", when_used="json")
+    def serialize_lifecycle_rules(
+        self, lifecycle_rules: list[S3LifecycleRule]
+    ) -> list[str]:
+        """Convert lifecycle_rules from list of S3LifecycleRule objects to list of strings."""
+        return [rule.raw for rule in lifecycle_rules]
+
+
+class ScooperConfig:
+    def __init__(self, deployment_config: DeploymentConfig) -> None:
+        self._deployment_config = deployment_config
+        # Environment attributes
         self.account_id = STS_CLIENT.get_caller_identity()["Account"]
 
         if self.is_org_level():
@@ -64,12 +87,78 @@ class ScooperConfig:
                     "You need to run Scooper from your organization's management account for org-level enumeration/deployment."
                 ) from e
 
-        if self.standalone:
+        # PKI attributes
+        if self.deployment_config.standalone:
             self.certificate_authority = CertificateAuthority(timedelta(days=365))
             self.leaf_certificate = LeafCertificate(self.certificate_authority)
 
+    @property
+    def deployment_config(self) -> DeploymentConfig:
+        return self._deployment_config
+
+    @deployment_config.setter
+    def deployment_config(self, value: DeploymentConfig) -> None:
+        """Update deployment_config with new values, prompting for overwrites if necessary."""
+        for field in self._deployment_config.model_fields_set:
+            current_value = getattr(self._deployment_config, field, None)
+            given_value = getattr(value, field)
+            if current_value is not None and current_value != given_value:
+                _logger.warning(
+                    "%s: '%s' provided differs from %s: '%s' found in SSM config.",
+                    field,
+                    given_value,
+                    field,
+                    current_value,
+                )
+                while True:
+                    if (
+                        user_input := input(
+                            "Overwrite SSM config with new value? (y/n): "
+                        ).lower()
+                    ) in {"y", "n"}:
+                        if user_input == "y":
+                            setattr(self._deployment_config, field, given_value)
+                        break
+                    else:
+                        _logger.error("Invalid input. Please enter 'y' or 'n'.")
+            else:
+                setattr(self._deployment_config, field, given_value)
+
     def is_org_level(self) -> bool:
-        return self.level == ORG
+        """Check if ScooperConfig is set to org-level."""
+        return self.deployment_config.level == ORG
+
+    def write_to_ssm(self) -> None:
+        """Write ScooperConfig to SSM Parameter Store."""
+        ssm_client = client("ssm")
+        try:
+            ssm_client.put_parameter(
+                Name="/Scooper/Config",
+                Description=f"{SCOOPER} Configuration",
+                Value=self.deployment_config.model_dump_json(),
+                Type="String",
+                Overwrite=True,
+            )
+        except ClientError as e:
+            raise SystemExit("Failed to write config to SSM.") from e
+
+    @classmethod
+    def from_ssm(cls) -> Optional[ScooperConfig]:  # noqa: UP045
+        """Retrieve ScooperConfig from SSM Parameter Store."""
+        ssm_client = client("ssm")
+        try:
+            parameter_value = ssm_client.get_parameter(Name="/Scooper/Config")[
+                "Parameter"
+            ]["Value"]
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "ParameterNotFound":
+                return None
+            raise SystemExit("Failed to retrieve config from SSM.") from e
+
+        try:
+            return cls(DeploymentConfig(**loads(parameter_value)))
+        except (JSONDecodeError, ValidationError) as e:
+            raise SystemExit("Failed to parse config from SSM.") from e
 
 
 class IAMRA(BaseModel):

@@ -32,7 +32,7 @@ from click import group
 from scooper.configure_logging import deploy
 from scooper.core.cli import options
 from scooper.core.cli.callbacks import S3LifecycleRule
-from scooper.core.config import ScooperConfig
+from scooper.core.config import DeploymentConfig, ScooperConfig
 from scooper.core.lambda_layer import CBS_COMMON_LAMBDA_LAYER_VERSION_ARN, LambdaLayer
 from scooper.core.utils.io import date_range_input, write_dict_to_file
 from scooper.core.utils.logger import get_logger
@@ -68,9 +68,23 @@ def main(
     role_name: str,
     standalone: bool,
 ) -> None:
-    scooper_config = ScooperConfig(
-        level=level, cross_account_role_name=role_name, standalone=standalone
+    """Main entry point for the Scooper CLI."""
+    deployment_config = DeploymentConfig(
+        level=level,
+        cross_account_role_name=role_name,
+        lifecycle_rules=lifecycle_rules,
+        standalone=standalone,
     )
+
+    if (scooper_config := ScooperConfig.from_ssm()) is None:
+        # No existing config in SSM, create a new one
+        scooper_config = ScooperConfig(deployment_config)
+    else:
+        # Update existing config with any CLI arguments provided
+        scooper_config.deployment_config = deployment_config
+
+    # Keep SSM up to date with any changes made via CLI arguments
+    scooper_config.write_to_ssm()
 
     cloudtrail = CloudTrail(scooper_config)
     cloudwatch = CloudWatch(scooper_config)

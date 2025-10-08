@@ -122,6 +122,8 @@ Scooper can be run with the following options:
   - Name of role with organizational account access.
   - If Organization level enumeration is chosen, the name of the role with organizational account access must be specified.
   - The default name is set to `OrganizationAccountAccessRole` for users using AWS Organizations for account management, and will differ for other account factory tools.
+- `--standalone`
+  - Configures PKI for external AWS authentication and an SQS to write Scooper S3 write events to for use within a standalone analytics platform.
 
 ## Development and Testing
 
@@ -275,6 +277,8 @@ Scooper peut être exécuté avec les options suivantes :
   - Nom du rôle avec accès au compte d'organisation.
   - Si l'énumération au niveau de l'organisation est choisie, le nom du rôle avec accès au compte de l'organisation doit être spécifié.
   - Le nom par défaut est `OrganizationAccountAccessRole` pour les usagers qui utilisent AWS Organizations pour la gestion des comptes, et sera différent pour les autres outils de création de comptes.
+- `--standalone`
+  - Configure l'infastructure PKI pour l'authentification AWS externe et un SQS pour écrire les événements Scooper S3 à utiliser dans une plateforme d'analyse autonome.
 
 ## Essais et Développement
 

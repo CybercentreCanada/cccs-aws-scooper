@@ -46,6 +46,10 @@ def lifecycle_tokenizer(
 class S3LifecycleRule:
     storage_class: Union[s3.StorageClass, str]  # noqa: UP007
     duration: int
+    raw: str
+
+    def __repr__(self) -> str:
+        return self.raw
 
 
 class S3LifecycleTokenizer:
@@ -72,13 +76,20 @@ class S3LifecycleTokenizer:
                         S3LifecycleRule(
                             storage_class=self._storage_classes[storage_class],
                             duration=int(duration),
+                            raw=token,
                         )
                     )
                 else:
                     raise BadParameter(f"Invalid lifecycle rules syntax: '{token}'")
             except KeyError as e:
                 if storage_class == "EXPIRY":
-                    self.rules.append(S3LifecycleRule(storage_class, int(duration)))
+                    self.rules.append(
+                        S3LifecycleRule(
+                            storage_class=storage_class,
+                            duration=int(duration),
+                            raw=token,
+                        )
+                    )
                 else:
                     available_storage_classes = [
                         *list(self._storage_classes.keys()),

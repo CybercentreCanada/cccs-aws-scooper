@@ -46,6 +46,7 @@ def deploy(
     lifecycle_rules: list[S3LifecycleRule],
     scooper_config: ScooperConfig,
 ) -> None:
+    """Deploy or destroy the Scooper infrastructure using AWS CDK."""
     app = App()
     stack_name = SCOOPER
 
