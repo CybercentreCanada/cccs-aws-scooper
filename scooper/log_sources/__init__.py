@@ -56,7 +56,7 @@ class LogSource(ILogSource):
 
     @property
     def level(self) -> str:
-        return self.scooper_config.level
+        return self.scooper_config.deployment_config.level
 
     @property
     def report(self) -> LoggingReport:

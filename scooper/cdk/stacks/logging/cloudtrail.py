@@ -44,7 +44,9 @@ class CloudTrail(NestedStack):
     ) -> None:
         super().__init__(scope, construct_id)
 
-        trail_name = f"{scooper_config.level.capitalize()}Trail-Scooper"
+        trail_name = (
+            f"{scooper_config.deployment_config.level.capitalize()}Trail-Scooper"
+        )
         cloudtrail_service_principal = iam.ServicePrincipal("cloudtrail.amazonaws.com")
 
         scooper_bucket.add_to_resource_policy(

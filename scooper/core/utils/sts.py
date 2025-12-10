@@ -45,7 +45,7 @@ def get_all_account_sessions(
     """Get all account sessions in organization."""
     all_member_account_sessions: dict[str, Session] = {}
     cross_account_role_template = Template(
-        f"arn:aws:iam::$account:role/{scooper_config.cross_account_role_name}"
+        f"arn:aws:iam::$account:role/{scooper_config.deployment_config.cross_account_role_name}"
     )
 
     org_client = BotoHelper("organizations")

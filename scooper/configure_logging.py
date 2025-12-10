@@ -108,7 +108,7 @@ def deploy(
         outputs = outputs[stack_name]
         bucket_name = outputs["BucketName"]
 
-        if scooper_config.standalone:
+        if scooper_config.deployment_config.standalone:
             iamra = IAMRA(
                 reader_role_arn=outputs["ReaderRoleArn"],
                 trust_anchor_arn=outputs["TrustAnchorArn"],

@@ -83,6 +83,8 @@ def main(
         # Update existing config with any CLI arguments provided
         scooper_config.deployment_config = deployment_config
 
+    # Confirm that the deployment level and account are correct
+    scooper_config.confirm_account()
     # Keep SSM up to date with any changes made via CLI arguments
     scooper_config.write_to_ssm()
 

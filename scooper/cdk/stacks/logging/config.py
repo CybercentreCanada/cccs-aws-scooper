@@ -44,7 +44,7 @@ class Config(NestedStack):
     ) -> None:
         super().__init__(scope, construct_id)
 
-        name = f"{scooper_config.level.capitalize()}Config-Scooper"
+        name = f"{scooper_config.deployment_config.level.capitalize()}Config-Scooper"
         config_service_principal = iam.ServicePrincipal("config.amazonaws.com")
 
         if scooper_config.is_org_level():

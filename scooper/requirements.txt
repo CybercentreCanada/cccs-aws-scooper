@@ -1,7 +1,7 @@
-aws-cdk-lib==2.189.1
+aws-cdk-lib==2.214.0
 boto3==1.40.*
 click==8.1.*
 constructs>=10.0.0,<11.0.0
 cryptography==46.0.*
-pydantic==2.11.*
+pydantic==2.12.*
 PyYAML==6.0.*

@@ -26,16 +26,24 @@ from __future__ import annotations
 
 from datetime import timedelta
 from json import JSONDecodeError, loads
+from os import environ
 from typing import Any, Literal, Optional
 
 from boto3 import client
 from botocore.exceptions import ClientError
+from cbs_common.aws.utilities import assume_role
 from pydantic import BaseModel, ValidationError, field_serializer, field_validator
 from yaml import safe_dump as yaml_dump
 
 from scooper.core.cli.callbacks import S3LifecycleRule, S3LifecycleTokenizer
 from scooper.core.constants import ORG, SCOOPER
 from scooper.core.pki import CertificateAuthority, LeafCertificate
+from scooper.core.utils.io import (
+    account_selection,
+    boolean_prompt,
+    bucket_input,
+    display_buckets,
+)
 from scooper.core.utils.logger import get_logger
 from scooper.core.utils.sts import STS_CLIENT, get_all_account_sessions
 
@@ -49,6 +57,7 @@ class DeploymentConfig(BaseModel, arbitrary_types_allowed=True):
     cross_account_role_name: str
     lifecycle_rules: list[S3LifecycleRule]
     standalone: bool
+    supplementary_buckets: list[str] = []
 
     @field_validator("lifecycle_rules", mode="before")
     @classmethod
@@ -76,6 +85,40 @@ class ScooperConfig:
         # Environment attributes
         self.account_id = STS_CLIENT.get_caller_identity()["Account"]
 
+        # PKI attributes
+        if self.deployment_config.standalone:
+            self.certificate_authority = CertificateAuthority(timedelta(days=365))
+            self.leaf_certificate = LeafCertificate(self.certificate_authority)
+
+    def confirm_account(self):
+        """Confirm that the deployment level and account are correct."""
+        _logger.info(
+            "Running %s-level %s in account '%s'.",
+            self.deployment_config.level,
+            SCOOPER,
+            self.account_id,
+        )
+
+        if not boolean_prompt("Is this the correct account?"):
+            if not self.is_org_level():
+                _logger.error(
+                    "Need to run with org-level option to assume into other accounts. See `python -m scooper --help` for details."
+                )
+                raise SystemExit
+
+            self.account_id = account_selection()
+            session = assume_role(
+                f"arn:aws:iam::{self.account_id}:role/{self.deployment_config.cross_account_role_name}"
+            )
+            credentials = session.get_credentials()
+            environ["AWS_ACCESS_KEY_ID"] = credentials.access_key
+            environ["AWS_SECRET_ACCESS_KEY"] = credentials.secret_key
+            environ["AWS_SESSION_TOKEN"] = credentials.token
+
+        self.load_config_dependent_attributes()
+
+    def load_config_dependent_attributes(self) -> None:
+        """Load attributes that depend on the deployment_config."""
         if self.is_org_level():
             try:
                 org_client = client("organizations")
@@ -87,10 +130,14 @@ class ScooperConfig:
                     "You need to run Scooper from your organization's management account for org-level enumeration/deployment."
                 ) from e
 
-        # PKI attributes
         if self.deployment_config.standalone:
-            self.certificate_authority = CertificateAuthority(timedelta(days=365))
-            self.leaf_certificate = LeafCertificate(self.certificate_authority)
+            buckets_indexed = display_buckets()
+            buckets_selected = bucket_input(limit=len(buckets_indexed))
+            self.deployment_config.supplementary_buckets = [
+                buckets_indexed[index] for index in buckets_selected
+            ]
+            if self.deployment_config.supplementary_buckets:
+                self.write_to_ssm()
 
     @property
     def deployment_config(self) -> DeploymentConfig:
@@ -110,17 +157,8 @@ class ScooperConfig:
                     field,
                     current_value,
                 )
-                while True:
-                    if (
-                        user_input := input(
-                            "Overwrite SSM config with new value? (y/n): "
-                        ).lower()
-                    ) in {"y", "n"}:
-                        if user_input == "y":
-                            setattr(self._deployment_config, field, given_value)
-                        break
-                    else:
-                        _logger.error("Invalid input. Please enter 'y' or 'n'.")
+                if boolean_prompt("Overwrite SSM config with new value?"):
+                    setattr(self._deployment_config, field, given_value)
             else:
                 setattr(self._deployment_config, field, given_value)
 

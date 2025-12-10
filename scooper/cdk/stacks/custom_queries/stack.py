@@ -106,29 +106,30 @@ class CustomQueries(NestedStack):
             )
         )
 
-        cf.CfnStackSet(
-            self,
-            "ScooperStackSet",
-            stack_set_name="ScooperCustomQueryRoles",
-            description="Deploys a Scooper custom query role in all member accounts.",
-            permission_model="SERVICE_MANAGED",
-            capabilities=["CAPABILITY_NAMED_IAM"],
-            auto_deployment=cf.CfnStackSet.AutoDeploymentProperty(
-                enabled=True,
-                retain_stacks_on_account_removal=False,
-            ),
-            managed_execution={"Active": True},
-            operation_preferences=cf.CfnStackSet.OperationPreferencesProperty(
-                failure_tolerance_count=1,
-                max_concurrent_percentage=100,
-            ),
-            template_body=json_dumps(template_body),
-            stack_instances_group=[
-                cf.CfnStackSet.StackInstancesProperty(
-                    deployment_targets=cf.CfnStackSet.DeploymentTargetsProperty(
-                        organizational_unit_ids=[scooper_config.root_id]
-                    ),
-                    regions=[self.region],
-                )
-            ],
-        )
+        if scooper_config.is_org_level():
+            cf.CfnStackSet(
+                self,
+                "ScooperStackSet",
+                stack_set_name="ScooperCustomQueryRoles",
+                description="Deploys a Scooper custom query role in all member accounts.",
+                permission_model="SERVICE_MANAGED",
+                capabilities=["CAPABILITY_NAMED_IAM"],
+                auto_deployment=cf.CfnStackSet.AutoDeploymentProperty(
+                    enabled=True,
+                    retain_stacks_on_account_removal=False,
+                ),
+                managed_execution={"Active": True},
+                operation_preferences=cf.CfnStackSet.OperationPreferencesProperty(
+                    failure_tolerance_count=1,
+                    max_concurrent_percentage=100,
+                ),
+                template_body=json_dumps(template_body),
+                stack_instances_group=[
+                    cf.CfnStackSet.StackInstancesProperty(
+                        deployment_targets=cf.CfnStackSet.DeploymentTargetsProperty(
+                            organizational_unit_ids=[scooper_config.root_id]
+                        ),
+                        regions=[self.region],
+                    )
+                ],
+            )

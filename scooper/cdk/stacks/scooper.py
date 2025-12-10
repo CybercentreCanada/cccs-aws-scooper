@@ -30,6 +30,7 @@ from aws_cdk import aws_events_targets as events_targets
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_kms as kms
 from aws_cdk import aws_s3 as s3
+from aws_cdk import aws_s3_notifications as s3_notifications
 from aws_cdk import aws_sqs as sqs
 from constructs import Construct
 from cryptography.hazmat.primitives.serialization import Encoding
@@ -76,7 +77,7 @@ class Scooper(Stack):
                     _logger.info("Configuring %s logging...", logging_report.service)
                 try:
                     module = import_module(
-                        f"scooper.cdk.nested_stacks.{logging_report.service.lower()}"
+                        f"scooper.cdk.stacks.logging.{logging_report.service.lower()}"
                     )
                     stack: NestedStack = getattr(module, logging_report.service)
                     stack(
@@ -95,13 +96,24 @@ class Scooper(Stack):
 
         CfnOutput(self, "BucketName", value=self.scooper_bucket.bucket_name)
 
-        if self.scooper_config.standalone:
+        if self.scooper_config.deployment_config.standalone:
             custom_queries_stack = CustomQueries(
                 self,
                 "CustomQueriesStack",
                 scooper_config=self.scooper_config,
                 scooper_reader_role=self.scooper_reader_role,
             )
+
+            for (
+                bucket_name
+            ) in self.scooper_config.deployment_config.supplementary_buckets:
+                bucket = s3.Bucket.from_bucket_name(
+                    self, bucket_name, bucket_name=bucket_name
+                )
+                bucket.add_object_created_notification(
+                    s3_notifications.SqsDestination(self.scooper_queue)
+                )
+                bucket.grant_read(self.scooper_reader_role)
 
             CfnOutput(self, "Region", value=self.region)
             CfnOutput(self, "QueueUrl", value=self.scooper_queue.queue_url)
@@ -166,7 +178,7 @@ class Scooper(Stack):
                     transitions=transitions if transitions else None,
                 )
 
-            if self.scooper_config.standalone:
+            if self.scooper_config.deployment_config.standalone:
                 # Allow Databricks role to read bucket
                 self._scooper_bucket.add_to_resource_policy(
                     iam.PolicyStatement(
@@ -222,7 +234,7 @@ class Scooper(Stack):
                 enforce_ssl=True,
             )
 
-            if self.scooper_config.standalone:
+            if self.scooper_config.deployment_config.standalone:
                 self._scooper_queue.grant_consume_messages(self.scooper_reader_role)
 
         return self._scooper_queue

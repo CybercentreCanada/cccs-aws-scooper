@@ -22,12 +22,14 @@ Notwithstanding the foregoing, third party components included herein are subjec
 noted in the files associated with those components.
 """
 
+from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 from json import JSONEncoder, dump, dumps
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Optional
 
 from boto3 import client
+from cbs_common.aws.utilities import paginate
 
 from scooper.core.utils.logger import get_logger
 
@@ -71,6 +73,100 @@ def _input(message: str, *_, **__) -> Callable:
             if (result := func(user_input)) is not None:
                 return result
             _logger.error("Invalid input: %s", user_input)
+
+    return inner
+
+
+def boolean_prompt(prompt: str) -> bool:
+    """CLI input for y/n question."""
+
+    @_input(f"{prompt} (y/n): ")
+    def inner(user_input: str) -> Optional[bool]:
+        if user_input in {"y", "n"}:
+            _logger.debug("User entered: %s", user_input)
+            return user_input == "y"
+
+    return inner
+
+
+def account_input(limit: int) -> int:
+    """CLI input for account selection."""
+
+    @_input("Enter number associated with the account you want: ")
+    def inner(user_input: str) -> Optional[int]:
+        if user_input.isnumeric() and 0 < int(user_input) <= limit:
+            _logger.debug("Account selected: %s", user_input)
+            return int(user_input)
+
+    return inner
+
+
+def account_selection() -> str:
+    accounts_alphabetical = sorted(
+        paginate(
+            client=client("organizations"),
+            command="list_accounts",
+            array="Accounts",
+            logger=_logger,
+        ),
+        key=lambda account: account["Name"],
+    )
+    accounts_indexed = {
+        index: (account["Name"], account["Id"])
+        for index, account in enumerate(accounts_alphabetical, start=1)
+    }
+
+    _logger.info("Accounts:")
+    for index, account_name_and_id in accounts_indexed.items():
+        account_name, account_id = account_name_and_id
+        _logger.info("[%s]: %s (%s)", index, account_name, account_id)
+
+    account_selection = account_input(limit=len(accounts_indexed))
+
+    return accounts_indexed[account_selection][1]
+
+
+def display_buckets() -> dict[int, str]:
+    """Display all buckets and return enumerated dictionary of bucket names."""
+    buckets_alphabetical = sorted(
+        client("s3").list_buckets()["Buckets"], key=lambda bucket: bucket["Name"]
+    )
+    buckets_indexed = {
+        index: bucket["Name"]
+        for index, bucket in enumerate(buckets_alphabetical, start=1)
+    }
+
+    _logger.info("Buckets:")
+    for index, bucket_name in buckets_indexed.items():
+        _logger.info("[%s]: %s", index, bucket_name)
+
+    return buckets_indexed
+
+
+def bucket_input(limit: int) -> list[int]:
+    """CLI input for S3 buckets selection."""
+
+    @_input(
+        "Enter comma-separated list of bucket numbers you want to integrate with standalone (or 'all' for all buckets or press Enter to skip): "
+    )
+    def inner(user_input: str) -> Optional[list[int]]:
+        if user_input.lower() == "all":
+            _logger.debug("All buckets selected")
+            return list(range(1, limit + 1))
+
+        bucket_indices = [index.strip() for index in user_input.split(",") if index]
+
+        if not bucket_indices:
+            _logger.debug("Skipping supplementary bucket selection")
+            return bucket_indices
+
+        if selected_bucket_indices := [
+            int(index)
+            for index in bucket_indices
+            if index.isnumeric() and 0 < int(index) <= limit
+        ]:
+            _logger.debug("Buckets selected: %s", selected_bucket_indices)
+            return selected_bucket_indices
 
     return inner
 
