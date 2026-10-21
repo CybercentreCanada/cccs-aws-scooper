@@ -23,7 +23,7 @@ noted in the files associated with those components.
 """
 
 from boto3 import client
-from cbs_common.aws.utilities import paginate
+from core.utils.paginate import paginate
 
 from scooper.core.config import ScooperConfig
 from scooper.core.constants import ACCOUNT, ORG, SCOOPER
@@ -42,9 +42,7 @@ class CloudTrail(LogSource):
 
     def enumerate(self) -> list[dict]:
         _logger.info("Enumerating %s...", self._service)
-        trails = paginate(
-            client=self._client, command="list_trails", array="Trails", logger=_logger
-        )
+        trails = paginate(client=self._client, operation="list_trails", array="Trails")
 
         # Remove shadow trails
         trails = self._client.describe_trails(

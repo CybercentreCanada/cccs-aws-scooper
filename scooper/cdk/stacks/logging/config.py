@@ -100,7 +100,7 @@ class Config(NestedStack):
                     all_supported=True,
                     include_global_resource_types=True,
                     recording_strategy=config.CfnConfigurationRecorder.RecordingStrategyProperty(
-                        "ALL_SUPPORTED_RESOURCE_TYPES"
+                        use_only="ALL_SUPPORTED_RESOURCE_TYPES"
                     ),
                 ),
             )

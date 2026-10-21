@@ -28,7 +28,7 @@ from datetime import datetime
 from json import loads
 
 from botocore.client import BaseClient
-from cbs_common.aws.utilities import paginate
+from core.utils.paginate import paginate
 
 from scooper.core.utils.io import write_dict_to_s3
 from scooper.core.utils.logger import get_logger
@@ -68,7 +68,6 @@ def get_cloudtrail_events(
                     cloudtrail_client,
                     "lookup_events",
                     "Events",
-                    _logger,
                     StartTime=period.start,
                     EndTime=period.end,
                 )
@@ -114,7 +113,11 @@ def write_cloudtrail_scoop_to_s3(
 ) -> None:
     """Write historical CloudTrail data to `bucket_name`."""
     _logger.info(
-        f"Getting CloudTrail data between '{start_time}' and '{end_time}' in account '{account_id}' and region '{region}'..."
+        "Getting CloudTrail data between '%s' and '%s' in account '%s' and region '%s'...",
+        start_time,
+        end_time,
+        account_id,
+        region,
     )
     data = get_cloudtrail_events(start_time, end_time, cloudtrail_client)
     partitions = CloudTrailData(data).partition()

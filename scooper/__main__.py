@@ -22,18 +22,38 @@ Notwithstanding the foregoing, third party components included herein are subjec
 noted in the files associated with those components.
 """
 
-from dataclasses import asdict, is_dataclass
+from dataclasses import asdict
+from logging import basicConfig
+from os import getenv
 from pathlib import Path
 
-from boto3 import Session, client
+from boto3 import Session
 from botocore.config import Config as BotoConfig
+from botocore.exceptions import ClientError
 from click import group
+
+from scooper.core.lambda_layer import (
+    METADATA_SOURCES,
+    METADATA_SOURCES_LAMBDA_LAYER_VERSION_ARN,
+    LambdaLayer,
+)
+
+basicConfig(
+    format="%(asctime)s %(name)s %(levelname)s: %(message)s",
+    datefmt="%Y-%m-%dT%H:%M:%S",
+    level=getenv("LOG_LEVEL", "INFO").upper(),
+)
+# The metadata sources and AWS helpers come from a Lambda layer, which must be importable before the Scooper modules that use it
+LambdaLayer.import_layer(
+    METADATA_SOURCES_LAMBDA_LAYER_VERSION_ARN,
+    packages=("core", *METADATA_SOURCES),
+    root_package="metadata_sources",
+)
 
 from scooper.configure_logging import deploy
 from scooper.core.cli import options
 from scooper.core.cli.callbacks import S3LifecycleRule
 from scooper.core.config import DeploymentConfig, ScooperConfig
-from scooper.core.lambda_layer import CBS_COMMON_LAMBDA_LAYER_VERSION_ARN, LambdaLayer
 from scooper.core.utils.io import date_range_input, write_dict_to_file
 from scooper.core.utils.logger import get_logger
 from scooper.core.utils.s3 import is_bucket_writable
@@ -41,12 +61,7 @@ from scooper.incident_response.cloudtrail import write_cloudtrail_scoop_to_s3
 from scooper.log_sources.cloudtrail import CloudTrail
 from scooper.log_sources.cloudwatch import CloudWatch
 from scooper.log_sources.config import Config
-
-LambdaLayer.import_layer(CBS_COMMON_LAMBDA_LAYER_VERSION_ARN, "cbs_common")
-
-from cbs_common.aws.iam_metadata import IAMMetadata
-from cbs_common.aws.organization_metadata import OrganizationMetadata
-from cbs_common.aws.sso_metadata import SSOMetadata
+from scooper.metadata_sources import collect_metadata
 
 _logger = get_logger()
 
@@ -91,39 +106,31 @@ def main(
     cloudtrail = CloudTrail(scooper_config)
     cloudwatch = CloudWatch(scooper_config)
     config = Config(scooper_config)
-    iam_credential_reports = (
-        [
-            IAMMetadata(account_id, session.client("iam")).get_report()
-            for account_id, session in scooper_config.all_account_sessions.items()
-        ]
-        if scooper_config.is_org_level()
-        else IAMMetadata(scooper_config.account_id, client("iam")).get_report()
-    )
 
     logging_reports = {
         "cloudtrail": cloudtrail.report,
         "cloudwatch": cloudwatch.report,
         "config": config.report,
-        "iam_metadata": iam_credential_reports,
     }
 
-    if scooper_config.is_org_level():
-        logging_reports["organization_metadata"] = OrganizationMetadata().get_report()
-        logging_reports["sso_metadata"] = SSOMetadata().get_report()
-
     for service, logging_report in logging_reports.items():
+        write_dict_to_file(obj=asdict(logging_report), path=Path(f"out/{service}.json"))
+
+    metadata_objects = collect_metadata(scooper_config)
+
+    for key, metadata_object in metadata_objects:
+        metadata_task = metadata_object.metadata_task
         write_dict_to_file(
-            obj=(
-                asdict(logging_report)
-                if is_dataclass(logging_report)
-                else logging_report
+            obj=metadata_object.data,
+            path=Path(
+                "out/metadata", metadata_task.account_id, metadata_task.region, key
             ),
-            path=Path(f"out/{service}.json"),
         )
 
     if configure_logging or destroy:
         deploy(
             logging_reports=logging_reports,
+            metadata_objects=metadata_objects,
             destroy=destroy,
             lifecycle_rules=lifecycle_rules,
             scooper_config=scooper_config,
@@ -140,16 +147,22 @@ def main(
             session = Session()
             config = BotoConfig(retries={"mode": "adaptive", "max_attempts": 16})
             for region in session.get_available_regions("cloudtrail"):
-                write_cloudtrail_scoop_to_s3(
-                    start_time=start_time,
-                    end_time=end_time,
-                    account_id=scooper_config.account_id,
-                    region=region,
-                    bucket_name=bucket_name,
-                    cloudtrail_client=session.client(
-                        "cloudtrail", region_name=region, config=config
-                    ),
-                )
+                try:
+                    write_cloudtrail_scoop_to_s3(
+                        start_time=start_time,
+                        end_time=end_time,
+                        account_id=scooper_config.account_id,
+                        region=region,
+                        bucket_name=bucket_name,
+                        cloudtrail_client=session.client(
+                            "cloudtrail", region_name=region, config=config
+                        ),
+                    )
+                # Opt-in regions that aren't enabled in the account reject requests
+                except ClientError as e:
+                    _logger.warning(
+                        "Skipping CloudTrail scoop in region '%s': %s", region, e
+                    )
         else:
             raise SystemExit(f"Can't write to '{bucket_name}'")
 

@@ -23,10 +23,8 @@ noted in the files associated with those components.
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
-
-from cbs_common.datetimes import utc_now
 
 
 @dataclass
@@ -35,7 +33,7 @@ class LoggingReport:
     logging_enabled: bool
     details: dict[str, Any]
 
-    event_time: datetime = field(default_factory=utc_now)
+    event_time: datetime = field(default_factory=lambda: datetime.now(UTC))
     owned_by_scooper: bool = field(default=False)
 
     def cdk_needed(self) -> bool:

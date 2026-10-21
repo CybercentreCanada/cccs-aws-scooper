@@ -1,0 +1,43 @@
+[project]
+name = "scooper"
+version = "0.0.0"
+description = "Data collection and aggregation of core AWS logging workloads in an AWS account or organization."
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "aws-cdk-lib==2.270.0",
+    "boto3==1.43.100",
+    "click==8.5.0",
+    "constructs>=10.0.0,<11.0.0",
+    "cryptography==50.0.1",
+    "pydantic==2.13.5",
+    "pyyaml==6.0.3",
+]
+
+[dependency-groups]
+dev = [
+    "pre-commit==4.6.2",
+    "ruff==0.16.8",
+]
+
+### Ruff configuration. See https://docs.astral.sh/ruff/settings/.
+
+[tool.ruff.lint]
+select = [
+    "E", # pycodestyle (error)
+    "F", # pyflakes
+    "B", # bugbear
+    "B9",
+    "C4", # flake8-comprehensions
+    "SIM", # flake8-simplify
+    "I", # isort
+    "UP", # pyupgrade
+    "PIE", # flake8-pie
+    "PGH", # pygrep-hooks
+    "PYI", # flake8-pyi
+    "RUF",
+]
+ignore = [
+    "E402", # Module level import not at top of file violations
+    "E501", # Line length violations
+]

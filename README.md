@@ -55,8 +55,8 @@ This project is designed to be run by admins to gather data about their AWS envi
 
 ## Prerequisites
 
-- [Python 3.9+](https://www.python.org/downloads/)
-- [Node.js 14.15+](https://nodejs.org/en/download)
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) (installs Python 3.14+ automatically)
+- [Node.js 22+](https://nodejs.org/en/download)
 - [AWS CDK](https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html#getting_started_install)
 - [Bootstrapped account](https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html#getting_started_bootstrap)
 
@@ -67,7 +67,7 @@ This project is designed to be run by admins to gather data about their AWS envi
 - Change your current directory to the project directory:
   - `cd cccs-aws-scooper`
 - Install necessary dependencies:
-  - `python3 -m venv .venv && source .venv/bin/activate && pip install -r scooper/requirements.txt`
+  - `uv sync`
 
 ## Updates
 
@@ -84,7 +84,7 @@ Scooper can be run using any AWS principal that has been assigned an [Administra
 
 After pulling the repository to your environment and installing the required dependencies, users must have valid credentials configured to their AWS account of choice.
 
-Run `python -m scooper --help` to see all CLI options.
+Run `uv run -m scooper --help` to see all CLI options.
 
 #### CLI Options
 
@@ -106,7 +106,7 @@ Scooper can be run with the following options:
     - `x` represents the number of days before an object is transitioned to a given `STORAGE_CLASS`.
     - `y` represents the number of days before an object is expired/deleted (must be greater than x).
   - Omitting lifecycle rules on subsequent deployments with `configure-logging` will remove the lifecycle rules in place on the created S3 bucket.
-  - Supported storage classes can be found using the `python -m scooper configure-logging --help` command.
+  - Unsupported storage classes are rejected with the list of supported storage classes.
   - Omitting the `--lifecycle-rules` option results in using the default storage class of `STANDARD` and no lifecycle policy will be in place on the created S3 bucket.
   - Examples:
     - `--lifecycle-rules "GLACIER(1d),EXPIRY(12d)"`
@@ -127,10 +127,9 @@ Scooper can be run with the following options:
 
 ## Development and Testing
 
-1. Pull down the repo from GitHub and start a new virtual environment on your system.
-   - For Linux-based systems: `python3 venv .venv && source .venv/bin/activate`.
-2. In the virtual environment, run `pip install -r requirements-dev.txt`.
-3. Run `pre-commit install` to install the git pre-commit hooks.
+1. Pull down the repo from GitHub and [install uv](https://docs.astral.sh/uv/getting-started/installation/).
+2. Run `uv sync` to create the virtual environment with the development dependencies.
+3. Run `uv run ruff check` and `uv run ruff format` to lint and format the code.
 
 ## Contributions
 
@@ -211,8 +210,8 @@ Ce projet est désigné d'être exécuté par des administrateurs pour rassemble
 
 ## Prérequis
 
-- [Python 3.10+](https://www.python.org/downloads/)
-- [Node.js 14.15+](https://nodejs.org/en/download)
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) (installe automatiquement Python 3.14+)
+- [Node.js 22+](https://nodejs.org/en/download)
 - [AWS CDK](https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html#getting_started_install)
 - [Bootstrap votre compte](https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html#getting_started_bootstrap)
 
@@ -223,7 +222,7 @@ Ce projet est désigné d'être exécuté par des administrateurs pour rassemble
 - Changez votre répertoire actuel vers le répertoire du projet:
   - `cd cccs-aws-scooper`
 - Installer les dépendances requises:
-  - `python3 -m venv .venv && source .venv/bin/activate && pip install -r scooper/requirements.txt`
+  - `uv sync`
 
 ## Mises à jour
 
@@ -240,7 +239,7 @@ Scooper peut être exécutée par n'importe quel principal AWS qui a été attri
 
 Après avoir récupéré le dépôt dans votre environnement et installé les dépendances requises, les usagers doivent disposer d'informations d'identification valides configurées sur le compte AWS de leur choix.
 
-Lancez `python -m scooper --help` pour voir toutes les options CLI.
+Lancez `uv run -m scooper --help` pour voir toutes les options CLI.
 
 #### Options CLI
 
@@ -282,10 +281,9 @@ Scooper peut être exécuté avec les options suivantes :
 
 ## Essais et Développement
 
-1. Récupérez le dépôt de GitHub et démarrez un nouvel environnement virtuel sur votre système.
-   - Pour les systèmes Linux : `python3 venv .venv && source .venv/bin/activate`.
-2. Dans l'environnement virtuel, lancez `pip install -r requirements-dev.txt`.
-3. Exécutez `pre-commit install` pour installer les crochets de pré-commit de git.
+1. Récupérez le dépôt de GitHub et [installez uv](https://docs.astral.sh/uv/getting-started/installation/).
+2. Lancez `uv sync` pour créer l'environnement virtuel avec les dépendances de développement.
+3. Lancez `uv run ruff check` et `uv run ruff format` pour analyser et formater le code.
 
 ## Contributions FR
 

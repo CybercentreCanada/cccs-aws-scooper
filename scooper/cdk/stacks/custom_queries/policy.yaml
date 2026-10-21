@@ -7,6 +7,14 @@ PolicyDocument:
       Action:
         - iam:GenerateCredentialReport
         - iam:GetCredentialReport
+        - iam:GetGroupPolicy
+        - iam:ListAccessKeys
+        - iam:ListAttachedGroupPolicies
+        - iam:ListAttachedUserPolicies
+        - iam:ListGroupPolicies
+        - iam:ListGroupsForUser
+        - iam:ListSSHPublicKeys
+        - iam:ListUserPolicies
         - iam:ListUsers
         - iam:ListVirtualMFADevices
       Resource: '*'

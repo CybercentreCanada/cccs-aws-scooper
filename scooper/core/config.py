@@ -22,16 +22,14 @@ Notwithstanding the foregoing, third party components included herein are subjec
 noted in the files associated with those components.
 """
 
-from __future__ import annotations
-
 from datetime import timedelta
 from json import JSONDecodeError, loads
 from os import environ
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from boto3 import client
 from botocore.exceptions import ClientError
-from cbs_common.aws.utilities import assume_role
+from core.sts import assume_role
 from pydantic import BaseModel, ValidationError, field_serializer, field_validator
 from yaml import safe_dump as yaml_dump
 
@@ -102,7 +100,7 @@ class ScooperConfig:
         if not boolean_prompt("Is this the correct account?"):
             if not self.is_org_level():
                 _logger.error(
-                    "Need to run with org-level option to assume into other accounts. See `python -m scooper --help` for details."
+                    "Need to run with org-level option to assume into other accounts. See `uv run -m scooper --help` for details."
                 )
                 raise SystemExit
 
@@ -166,6 +164,11 @@ class ScooperConfig:
         """Check if ScooperConfig is set to org-level."""
         return self.deployment_config.level == ORG
 
+    @property
+    def identifier(self) -> str:
+        """Identify the deployment by its organization ID, or its account ID at account level."""
+        return self.org_id if self.is_org_level() else self.account_id
+
     def write_to_ssm(self) -> None:
         """Write ScooperConfig to SSM Parameter Store."""
         ssm_client = client("ssm")
@@ -181,7 +184,7 @@ class ScooperConfig:
             raise SystemExit("Failed to write config to SSM.") from e
 
     @classmethod
-    def from_ssm(cls) -> Optional[ScooperConfig]:  # noqa: UP045
+    def from_ssm(cls) -> ScooperConfig | None:
         """Retrieve ScooperConfig from SSM Parameter Store."""
         ssm_client = client("ssm")
         try:

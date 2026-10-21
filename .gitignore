@@ -12,3 +12,4 @@ __pycache__
 # Scooper output
 out/*
 pki/*
+output_config.yaml

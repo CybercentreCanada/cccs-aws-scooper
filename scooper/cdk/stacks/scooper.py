@@ -40,7 +40,7 @@ from scooper.cdk.stacks.custom_queries.stack import CustomQueries
 from scooper.core.cli.callbacks import S3LifecycleRule
 from scooper.core.config import ScooperConfig
 from scooper.core.constants import SCOOPER
-from scooper.core.lambda_layer import CBS_COMMON_LAMBDA_LAYER_ARN
+from scooper.core.lambda_layer import METADATA_SOURCES_LAMBDA_LAYER_ARN
 from scooper.core.utils.logger import get_logger
 from scooper.log_sources.report import LoggingReport
 
@@ -79,7 +79,7 @@ class Scooper(Stack):
                     module = import_module(
                         f"scooper.cdk.stacks.logging.{logging_report.service.lower()}"
                     )
-                    stack: NestedStack = getattr(module, logging_report.service)
+                    stack: type[NestedStack] = getattr(module, logging_report.service)
                     stack(
                         self,
                         f"{logging_report.service}Stack",
@@ -266,7 +266,7 @@ class Scooper(Stack):
             self._scooper_reader_role.add_to_policy(
                 iam.PolicyStatement(
                     actions=["lambda:GetLayerVersion"],
-                    resources=[f"{CBS_COMMON_LAMBDA_LAYER_ARN}:*"],
+                    resources=[f"{METADATA_SOURCES_LAMBDA_LAYER_ARN}:*"],
                 )
             )
 

@@ -23,7 +23,7 @@ noted in the files associated with those components.
 """
 
 from boto3 import client
-from cbs_common.aws.utilities import paginate
+from core.utils.paginate import paginate
 
 from scooper.core.config import ScooperConfig
 from scooper.core.constants import SCOOPER
@@ -45,9 +45,8 @@ class Config(LogSource):
 
         config_aggregators = paginate(
             client=self._client,
-            command="describe_configuration_aggregators",
+            operation="describe_configuration_aggregators",
             array="ConfigurationAggregators",
-            logger=_logger,
         )
         # Update aggregators with status information
         config_aggregators = {
@@ -60,9 +59,8 @@ class Config(LogSource):
                 {
                     aggregator: paginate(
                         client=self._client,
-                        command="describe_configuration_aggregator_sources_status",
+                        operation="describe_configuration_aggregator_sources_status",
                         array="AggregatedSourceStatusList",
-                        logger=_logger,
                         ConfigurationAggregatorName=aggregator,
                     )[0]
                 }
@@ -104,7 +102,7 @@ class Config(LogSource):
 
         return delivery_channels
 
-    def enumerate(self) -> tuple[dict[str, dict]]:
+    def enumerate(self) -> tuple[dict[str, dict], dict[str, dict], dict[str, dict]]:
         _logger.info("Enumerating %s...", self._service)
 
         config_aggregators = self._enumerate_config_aggregators()

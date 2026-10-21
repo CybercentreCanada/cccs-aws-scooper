@@ -22,11 +22,9 @@ Notwithstanding the foregoing, third party components included herein are subjec
 noted in the files associated with those components.
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from re import compile, match
-from typing import ClassVar, Optional, Union
+from typing import ClassVar
 
 from aws_cdk import aws_s3 as s3
 from click import BadParameter, Context, Option
@@ -35,7 +33,7 @@ from click import BadParameter, Context, Option
 def lifecycle_tokenizer(
     _: Context,
     __: Option,
-    value: Optional[str],  # noqa: UP045
+    value: str | None,
 ) -> list[S3LifecycleRule]:
     if value is not None:
         return S3LifecycleTokenizer(value).rules
@@ -44,7 +42,7 @@ def lifecycle_tokenizer(
 
 @dataclass(frozen=True)
 class S3LifecycleRule:
-    storage_class: Union[s3.StorageClass, str]  # noqa: UP007
+    storage_class: s3.StorageClass | str
     duration: int
     raw: str
 

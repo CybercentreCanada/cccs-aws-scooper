@@ -22,61 +22,85 @@ Notwithstanding the foregoing, third party components included herein are subjec
 noted in the files associated with those components.
 """
 
+from collections.abc import Collection
 from io import BytesIO
 from pathlib import Path
+from sys import modules
 from sys import path as syspath
+from tempfile import mkdtemp
+from types import ModuleType
 from urllib.request import urlopen
 from zipfile import ZipFile
 
 from boto3 import client
 
-CBS_COMMON_LAMBDA_LAYER_ARN = (
-    "arn:aws:lambda:ca-central-1:495075646178:layer:CBSCommonLayer"
+from scooper.core.utils.logger import get_logger
+
+METADATA_SOURCES_LAMBDA_LAYER_ARN = (
+    "arn:aws:lambda:ca-central-1:495075646178:layer:CBSMetadataSourcesLambdaLayer"
 )
-CBS_COMMON_LAMBDA_LAYER_VERSION = 29
-CBS_COMMON_LAMBDA_LAYER_VERSION_ARN = (
-    f"{CBS_COMMON_LAMBDA_LAYER_ARN}:{CBS_COMMON_LAMBDA_LAYER_VERSION}"
+METADATA_SOURCES_LAMBDA_LAYER_VERSION = 34
+METADATA_SOURCES_LAMBDA_LAYER_VERSION_ARN = (
+    f"{METADATA_SOURCES_LAMBDA_LAYER_ARN}:{METADATA_SOURCES_LAMBDA_LAYER_VERSION}"
 )
+# Metadata source packages in the layer that Scooper collects from
+METADATA_SOURCES = ("iam", "organization", "sso")
+
+_logger = get_logger()
 
 
 class LambdaLayer:
-    path = Path("/tmp/lambda_layers")
-    full_path = path / "python"
+    # Per-user cache: code extracted to a shared location like /tmp could be planted by other users
+    path = Path.home() / ".cache" / "scooper" / "lambda_layers"
 
     @classmethod
-    def _exists(cls, layer_name: str) -> bool:
-        """Check if Lambda Layer has already been downloaded."""
-        return (cls.full_path / layer_name).exists()
+    def _extract_path(cls, layer_version_arn: str) -> Path:
+        """Get the directory a Lambda Layer version is extracted to: `<path>/<layer name>/<version>`."""
+        layer_name, version = layer_version_arn.split(":")[-2:]
+        return cls.path / layer_name / version
 
     @classmethod
-    def _download(cls, arn: str, module_name: str) -> None:
-        """Download and extract Lambda Layer."""
-        # Get information about Lambda Layer
+    def _download(cls, arn: str, packages: Collection[str], extract_path: Path) -> None:
+        """Download Lambda Layer and extract only the given top-level packages."""
+        _logger.info("Downloading Lambda Layer '%s'...", arn)
         lambda_client = client("lambda")
         response = lambda_client.get_layer_version_by_arn(Arn=arn)
         url = response["Content"]["Location"]
-        # Download Lambda Layer and extract zip to /tmp
+
         with urlopen(url) as zipresp, ZipFile(BytesIO(zipresp.read())) as zfile:
-            cls._validate(zfile, module_name)
-            zfile.extractall(cls.path)
+            prefixes = tuple(f"python/{package}/" for package in packages)
+            members = [name for name in zfile.namelist() if name.startswith(prefixes)]
+
+            if missing := set(packages) - {name.split("/")[1] for name in members}:
+                raise ValueError(
+                    f"Lambda Layer '{arn}' is missing packages: {sorted(missing)}"
+                )
+
+            extract_path.parent.mkdir(parents=True, exist_ok=True)
+            # Extract to a staging directory first so an interrupted extraction is never mistaken for a complete one
+            staging_path = Path(mkdtemp(dir=extract_path.parent))
+            zfile.extractall(staging_path, members)
+            staging_path.rename(extract_path)
 
     @classmethod
-    def _validate(cls, zip_file: ZipFile, module_name: str) -> None:
-        unexpected_module_items = [
-            path
-            for path in zip_file.namelist()
-            if not path.startswith(f"python/{module_name}")
-        ]
+    def import_layer(
+        cls,
+        layer_version_arn: str,
+        packages: Collection[str],
+        root_package: str | None = None,
+    ) -> None:
+        """Make the given top-level packages of a Lambda Layer importable, also as subpackages of `root_package` if given."""
+        extract_path = cls._extract_path(layer_version_arn)
 
-        if unexpected_module_items:
-            raise ValueError(
-                f"Unexpected module paths found when unzipping module '{module_name}'"
-            )
+        if not extract_path.exists():
+            cls._download(layer_version_arn, packages, extract_path)
 
-    @classmethod
-    def import_layer(cls, layer_version_arn: str, module_name: str) -> None:
-        """Add Lambda Layer to PYTHONPATH."""
-        if not cls._exists(module_name):
-            cls._download(layer_version_arn, module_name)
+        layer_root = str(extract_path / "python")
+        # Prepend so the pinned layer takes precedence over any installed modules with the same names
+        syspath.insert(0, layer_root)
 
-        syspath.append(str(cls.full_path))
+        if root_package:
+            # For layers built by flattening a package into their root, whose code still imports it by name
+            package = ModuleType(root_package)
+            package.__path__ = [layer_root]
+            modules[root_package] = package

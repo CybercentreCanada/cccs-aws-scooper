@@ -22,11 +22,10 @@ Notwithstanding the foregoing, third party components included herein are subjec
 noted in the files associated with those components.
 """
 
-from typing import Optional
-
 from boto3 import client
 from botocore.client import BaseClient
-from cbs_common.aws.utilities import paginate
+from botocore.exceptions import ClientError
+from core.utils.paginate import paginate
 
 from scooper.core.config import ScooperConfig
 from scooper.core.utils.logger import get_logger
@@ -42,14 +41,11 @@ class CloudWatch(LogSource):
         self._service = self.__class__.__name__
         self._client = client("logs")
 
-    def _get_log_groups(self, logs_client: Optional[BaseClient] = None) -> list[dict]:
+    def _get_log_groups(self, logs_client: BaseClient | None = None) -> list[dict]:
         _client = self._client if logs_client is None else logs_client
 
         return paginate(
-            client=_client,
-            command="describe_log_groups",
-            array="logGroups",
-            logger=_logger,
+            client=_client, operation="describe_log_groups", array="logGroups"
         )
 
     def enumerate(self) -> dict:
@@ -60,7 +56,17 @@ class CloudWatch(LogSource):
 
             for account_id, session in self.scooper_config.all_account_sessions.items():
                 _logger.info("Enumerating Log Groups in account '%s'...", account_id)
-                cw_log_groups[account_id] = self._get_log_groups(session.client("logs"))
+                try:
+                    cw_log_groups[account_id] = self._get_log_groups(
+                        session.client("logs")
+                    )
+                except ClientError as e:
+                    _logger.error(
+                        "Failed to enumerate Log Groups in account '%s': %s",
+                        account_id,
+                        e,
+                    )
+                    cw_log_groups[account_id] = []
 
             return cw_log_groups
         else:

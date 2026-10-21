@@ -27,8 +27,8 @@ from typing import TYPE_CHECKING
 
 from boto3 import Session, client
 from botocore.exceptions import ClientError
-from cbs_common.aws.boto_types import DataRequest
-from cbs_common.aws.utilities import BotoHelper, assume_role
+from core.sts import assume_role
+from core.utils.paginate import paginate
 
 from scooper.core.utils.logger import get_logger
 
@@ -40,7 +40,7 @@ _logger = get_logger()
 
 
 def get_all_account_sessions(
-    scooper_config: "ScooperConfig",
+    scooper_config: ScooperConfig,
 ) -> dict[str, Session]:
     """Get all account sessions in organization."""
     all_member_account_sessions: dict[str, Session] = {}
@@ -48,9 +48,9 @@ def get_all_account_sessions(
         f"arn:aws:iam::$account:role/{scooper_config.deployment_config.cross_account_role_name}"
     )
 
-    org_client = BotoHelper("organizations")
-    data_request = DataRequest(method="list_accounts", array_key="Accounts")
-    accounts = org_client(data_request)
+    accounts = paginate(
+        client=client("organizations"), operation="list_accounts", array="Accounts"
+    )
 
     for account in accounts:
         account_id = account["Id"]

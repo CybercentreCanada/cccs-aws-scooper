@@ -23,13 +23,13 @@ noted in the files associated with those components.
 """
 
 from collections.abc import Callable
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from json import JSONEncoder, dump, dumps
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from boto3 import client
-from cbs_common.aws.utilities import paginate
+from core.utils.paginate import paginate
 
 from scooper.core.utils.logger import get_logger
 
@@ -54,8 +54,7 @@ def write_dict_to_s3(obj: dict, bucket_name: str, object_key: str) -> None:
 
 
 def write_dict_to_file(obj: dict, path: Path) -> None:
-    if not path.parent.exists():
-        path.parent.mkdir(parents=True, exist_ok=True)
+    path.parent.mkdir(parents=True, exist_ok=True)
 
     with path.open("w") as out:
         dump(obj, out, cls=ScooperEncoder, indent=2)
@@ -81,7 +80,7 @@ def boolean_prompt(prompt: str) -> bool:
     """CLI input for y/n question."""
 
     @_input(f"{prompt} (y/n): ")
-    def inner(user_input: str) -> Optional[bool]:
+    def inner(user_input: str) -> bool | None:
         if user_input in {"y", "n"}:
             _logger.debug("User entered: %s", user_input)
             return user_input == "y"
@@ -93,7 +92,7 @@ def account_input(limit: int) -> int:
     """CLI input for account selection."""
 
     @_input("Enter number associated with the account you want: ")
-    def inner(user_input: str) -> Optional[int]:
+    def inner(user_input: str) -> int | None:
         if user_input.isnumeric() and 0 < int(user_input) <= limit:
             _logger.debug("Account selected: %s", user_input)
             return int(user_input)
@@ -105,9 +104,8 @@ def account_selection() -> str:
     accounts_alphabetical = sorted(
         paginate(
             client=client("organizations"),
-            command="list_accounts",
+            operation="list_accounts",
             array="Accounts",
-            logger=_logger,
         ),
         key=lambda account: account["Name"],
     )
@@ -149,7 +147,7 @@ def bucket_input(limit: int) -> list[int]:
     @_input(
         "Enter comma-separated list of bucket numbers you want to integrate with standalone (or 'all' for all buckets or press Enter to skip): "
     )
-    def inner(user_input: str) -> Optional[list[int]]:
+    def inner(user_input: str) -> list[int] | None:
         if user_input.lower() == "all":
             _logger.debug("All buckets selected")
             return list(range(1, limit + 1))
@@ -174,12 +172,12 @@ def bucket_input(limit: int) -> list[int]:
 def date_range_input() -> tuple[datetime, datetime]:
     """CLI input for date range."""
 
-    def _validate_date(date_string: str) -> Optional[datetime]:
+    def _validate_date(date_string: str) -> datetime | None:
         try:
-            date = datetime.strptime(date_string, "%Y-%m-%d %H:%M:%S").astimezone(
-                timezone.utc
+            date = datetime.strptime(date_string, "%Y-%m-%d %H:%M:%S").replace(
+                tzinfo=UTC
             )
-            if date < (datetime.now(tz=timezone.utc) - timedelta(days=90)):
+            if date < (datetime.now(tz=UTC) - timedelta(days=90)):
                 _logger.error("Date must be within last 90 days")
                 return None
             _logger.debug("Date entered: %s", date.date())
